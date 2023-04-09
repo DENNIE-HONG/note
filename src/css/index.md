@@ -1,3 +1,4 @@
+# CSS
 ## 有切角的阴影
 ```css
 filter: drop-shadow(2px 2px 10px rgba(0, 0, 0, 0.5));
@@ -6,3 +7,72 @@ filter: drop-shadow(2px 2px 10px rgba(0, 0, 0, 0.5));
 ```css
 hyphens: auto;
 ```
+## 父元素高度坍塌
+一个块级元素没有设置height, 其height由子元素撑开。子元素浮动后脱离标准文档流，父元素没有内容可撑开，其height被忽略。
+
+## 清除浮动方法
+1. 父级div设高；
+2. 使用空元素
+```html
+<div class="clear"></div>
+```
+```css
+.clear{
+  clear: both;
+}
+```
+3. 父元素div一起浮动
+4. 父级div定义display: table;
+5. 父元素触发了BFC
+```css
+.fu {
+  overflow: hidden;
+}
+```
+6. 父级div定义伪类after和zoom
+```css
+.clearfix: after {
+  content: '.';
+  display: block;
+  height: 0;
+  clear: both;
+  visibility: hidden;
+}
+// 兼容IE6/IE7
+.clear {
+  zoom: 1;
+}
+```
+
+## 清除图片底部间隙
+1. 图片块状化，无基线对齐
+```css
+img {
+  display: block;
+}
+```
+2. 图片底线对齐
+```css
+img {
+  vertival-align: botom;
+}
+```
+3. 行高足够小
+
+## BFC
+### BFC是什么？
+Block Formatting Context(块级格式化上下文)
+### BFC特性？
+1. 内部box会在垂直方向，一个接一个的放置；
+2. 每个元素的margin box的左边，与包含块border box的左边相接触；
+3. box垂直方向的距离由margin决定，属于同一个bfc的2个相邻box的margin会重叠；
+4. bfc区域不会与浮动区域的box重叠；
+5. bfc是页面上独立的容器，外面元素不会影响bfc里的元素；
+6. 计算bfc的高度时，浮动元素也参与计算；
+
+### 触发BFC条件有：
+* float值不为none
+* overflow的值不为visible
+* display的值为table-cell、table-caption、inline-block、flex、inline-flex
+* position不为relative、static
+* 根元素
