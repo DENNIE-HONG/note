@@ -155,6 +155,62 @@
                          |———都有子节点
 
 ```
+### 伪代码
+```js
+
+function sameVnode(a, b) {
+  return a.key === b.key &&
+    a.tag === b.tag &&
+    a.isComment === b.isComment &&
+    // 是否都绑定了data
+    isDef(a.data) === isDef(b.data) &&
+    sameInputType(a, b); // 当input，type要相同
+}
+
+function patchVnode(oldVnode, vnode) {
+  const el = vnode.el = oldVnode.el;
+  let i;
+  let oldCh = oldVnode.children;
+  let ch = vnode.children;
+  // 都是文本节点
+  if (oldVnode.text !== null && vnode.text !== null
+  && oldVnode.text !== vnode.text) {
+    api.setTextContent(el, vnode.text);
+  } else {
+    updateEle(el, vnode, oldVnode);
+    // 都有子节点
+    if (oldCh && ch && oldCh !== ch) {
+      updateChildren(el, oldCh, ch);
+      // 只有新节点
+    } else if (ch) {
+      createEle(vnode);
+      // 只有老节点
+    } else if (oldCh) {
+      api.removeChild(el, oldCh);
+    }
+  }
+}
+function patch(oldVnode, vnode) {
+  if (sameVnode(oldVnode, vnode)) {
+    patchVnode(oldVnode, vnode);
+  } else {
+    const oEl = oldVnode.el;
+    let parentEle = api.parentNode;
+    // 根据vnode生成新元素
+    createEle(vnode);
+    if (parentEle !== null) {
+      api.insertBefore(parentEle, vnode.el, api.nextSibling(oEl));
+      // 移除旧元素节点
+      api.removeChild(parentEle, oldVnode.el);
+    }
+  }
+  return vnode;
+}
+```
+updateChildren思路；
+1. 将vnode子节点ch和oldVnode子节点oldCh提取出来
+2. oldCh和ch各有头尾变量startIdx和endIdx, 2个变量相比较，若都没匹配，如果设置了key，用key比较。一旦startIdx > endIdx,
+表明至少有一个遍历完了，则结束。
 
 ## nextTick的实现原理
 1. vue用异步队列的方式来控制DOM更新和NnextTick回调先后执行；

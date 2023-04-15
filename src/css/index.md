@@ -59,7 +59,11 @@ img {
 ```
 3. 行高足够小
 
-## BFC
+## 格式化上下文
+* BFC,block formatting context
+* IFC, inline formatting context(一个区域仅包含水平排列元素)
+* FFC, flex formatting context
+* GFC, grid formatting context
 ### BFC是什么？
 Block Formatting Context(块级格式化上下文)
 ### BFC特性？
@@ -76,3 +80,41 @@ Block Formatting Context(块级格式化上下文)
 * display的值为table-cell、table-caption、inline-block、flex、inline-flex
 * position不为relative、static
 * 根元素
+
+
+
+## 一个不定宽高的DIV,垂直水平居中？
+1. flex
+```css
+.parent {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+```
+
+2. 绝对定位
+```css
+.parent {
+  display: relative;
+}
+div {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+```
+
+3. 利用table
+```css
+.parent {
+  display: table-cell;
+  text-align: center;
+  vertical-align: middle;
+}
+div {
+  display: inline-block;
+  vertical-align: middle;
+}
+```
