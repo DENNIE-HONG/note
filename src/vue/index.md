@@ -1,5 +1,5 @@
 # Vue2.0（早期的）
-## Vue的双向绑定
+## 1 Vue的双向绑定
 发布订阅模式 + Object.defineProperty  
 
 简单伪代码：
@@ -116,7 +116,7 @@
   }
 ```
 
-## Diff
+## 2 Diff
 主要策略：  
 1. 按tree层级diff  
 新旧节点树之间按层级进行diff得到差异，而非传统按照深度遍历搜索；复杂度o(n^2) => o(n)
@@ -212,7 +212,78 @@ updateChildren思路；
 2. oldCh和ch各有头尾变量startIdx和endIdx, 2个变量相比较，若都没匹配，如果设置了key，用key比较。一旦startIdx > endIdx,
 表明至少有一个遍历完了，则结束。
 
-## nextTick的实现原理
+## 3. nextTick的实现原理
 1. vue用异步队列的方式来控制DOM更新和NnextTick回调先后执行；
 2. 微任务因为优先级高特性，能确保队列中的微任务在一次事件循环前被执行完毕；
 3. 因为兼容问题，vue不得不做了微任务向宏任务降级方案；
+
+## 4. computed实现？
+计算属性如何与属性建立依赖关系？  
+属性发生变化又如何通知到计算属性？
+### 伪代码
+```js
+// 这里开始转换data的getter、setter，原始值已存入_ob_属性中
+Object.defineProperty(obj, key, {
+  enumerable: true,
+  configurable: true,
+  get: function reativeGetter() {
+    const value = getter ? getter.call(obj): val;
+    // 判断是否处于依赖收集状态
+    if (Dep.target) {
+      // 建立关系
+      dep.depend();
+    }
+    return value;
+  },
+  set: function reactiveSetter(newVal) {
+    // 依赖发生变化，通知计算属性重新计算
+    dep.notify();
+  }
+});
+
+// 计算属性初始化
+function initComputed(vm, computed) {
+  ...
+  // 遍历computed计算属性
+  for (const key in computed) {
+    ...
+    // 创建watcher实例
+    watchers[key] = new Watcher(vm, getter || noop, noop, computeWatchOptions);
+    // 创建属性vm.计算属性, 并将提供的函数当作属性vm.计算属性的getter
+    // 最终computed与data会一起混合到vm下，所以当computed与data存在同名属性时会抛出警告
+    defineComputed(vm, key, userDef);
+    ...
+  }
+}
+
+export function defineComputed(target, key, userDef) {
+  // 创建set get 方法
+  sharedPropertyDefinition.get = createComputedGetter(key);
+  sharedPropertyDefinition.get = noop;
+  ...
+  // 创建属性vm.计算属性，并初始化getter setter
+  Object.defineProperty(target, key, sharedPropertyDefinition);
+}
+
+function createComputedGetter(key) {
+  return function computedGetter() {
+    const watcher = this._computedWatchers && this._computedWatchers[key];
+    if (watcher) {
+      if (watcher.dirty) {
+        // watcher暴露evaluate方法用于取值操作
+        watcher.evaluate();
+      }
+      // 同第一步，判断是否处于依赖收集状态
+      if (Dep.target) {
+        watcher.depend();
+      }
+      return watcher.value;
+    }
+  }
+}
+```
+1. data属性初始化getter setter
+2. computed计算属性初始化，提供的函数将用作属性vm.计算属性的getter
+3. 当首次获取计算属性的值时，Dep开始依赖收集
+4. 在执行某个属性 getter方法时，如果Dep处于依赖收集状态，则判定该属性为计算属性的依赖，并建立依赖关系
+5. 当 某个属性发生变化时，根据依赖关系，触发计算属性的重新计算

@@ -64,6 +64,28 @@ img {
 * IFC, inline formatting context(一个区域仅包含水平排列元素)
 * FFC, flex formatting context
 * GFC, grid formatting context
+
+### inline box(行框)
+包含IFC内部的所有子元素的虚拟矩形区域，形成的每一行。  
+行框的模型结构：（6条线）
+* top线
+* text-top线
+* middle线
+* baseline线
+* text-bottom线
+* bottom线
+```js
+ _ _ _ _ _ _ _  ————> top线
+|___________  |————> text-top             
+|_ _ _xaj_ _ _|----> middle
+|_____________|____ bottom线
+
+
+```
+#### 图片留白问题？
+因为：可置换行内元素如img和inline-block的元素，在被浏览器解析时，会和“文本”一样，默认在baseline线上显示，而不是在行框的bottom线上。
+
+
 ### BFC是什么？
 Block Formatting Context(块级格式化上下文)
 ### BFC特性？
