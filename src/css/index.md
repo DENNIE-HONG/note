@@ -1,12 +1,5 @@
 # CSS
-## 有切角的阴影
-```css
-filter: drop-shadow(2px 2px 10px rgba(0, 0, 0, 0.5));
-```
-## 两端对齐
-```css
-hyphens: auto;
-```
+
 ## 父元素高度坍塌
 一个块级元素没有设置height, 其height由子元素撑开。子元素浮动后脱离标准文档流，父元素没有内容可撑开，其height被忽略。
 
@@ -139,4 +132,35 @@ div {
   display: inline-block;
   vertical-align: middle;
 }
+```
+
+
+
+
+## 小技巧
+### 有切角的阴影
+```css
+filter: drop-shadow(2px 2px 10px rgba(0, 0, 0, 0.5));
+```
+### 两端对齐
+```css
+hyphens: auto;
+```
+
+### 小箭头自动继承背景和边框样式
+```css
+.callout {
+  postion: relative;
+}
+.callout::before {
+  content: '';
+  position: absolute;
+  background: inherit;
+  boder: inherit;
+  border-right: 0;
+  border-bottom: 0;
+  padding: 0.35em;
+  transform: rotate(45deg);
+}
+
 ```
