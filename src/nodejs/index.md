@@ -1,5 +1,5 @@
 # NodeJs
-## 工作模式
+## 1. 工作模式
 单线程的问题：
 1. cpu的利用率
 2. 进程的健壮性
@@ -7,14 +7,14 @@
 解决：  多进程：一个进程一个CPU，child-process  
 Master-Workder模式（主从）：主进程负责调度与管理，工作进程负责业务处理。
 
-## 通信
+## 2. 通信
 进程间通信：管道技术；
 主进程：创建IPC通道并监听；
 子进程：文件描述符 -> 连接 -> IPC
-## 负载均衡
+## 3. 负载均衡
 操作系统的抢占式策略：端口共同监听，TCP服务端socket套接字的文件描述符相同。但是只有一个进程能够抢到连接。
 
-## Node中的事件循环
+## 4. Node中的事件循环
 6个阶段
 ```
    ┌───────────────────────┐
@@ -51,3 +51,25 @@ fs.readFile(_filename, () => {
 ```
 
 readFile回调在poll中进行，发现有setimmedate, 跳到check阶段执行回调，再去timer阶段执行setTimeout
+
+## 5. 模块机制
+* 模块引用：require()
+* 模块定义：exports是module的属性，导出方法or变量
+* 模块标识：传给require的参数，小驼峰命名or路径
+
+nodejs会缓存引入模块，且是编译和执行之后的对象。  
+文件模块：
+```js
+function Module(id, parent) {
+  this.id = id;
+  this.exports = {};
+  this.parent = parent;
+  if (parent && parent.children) {
+    parent.children.push(this);
+  }
+  this.filename = null;
+  this.loaded = false;
+  this.children = [];
+}
+```
+编译成功的模块：文件路径缓存在Module._cache
