@@ -24,9 +24,33 @@ tcp包    <----
 与http是两码事。
 * 传统TCP socket：标准化的API
 * webSocket: 网络协议  
+```js
+// 创建WebSocket协议请求
+const socket = new WebSocket('ws://127.0.0.1/updates');
+// 连接打开，每50ms向服务器端发送一次数据
+socket.onopen = function() {
+  setInterval(function() {
+    if (socket.bufferedAmount === 0) {
+      socket.send(getUpdateData());
+    }
+  }, 50);
+}
+
+// 接收服务器端传来的数据
+socket.onmessage = function(event) {
+  // todo
+};
+```
+websocket握手：通过HTTP发起请求报文
+协议头区别：
+* Upgrade: websocket
+* Connection: Upgrade
+
 
 ### 2.2 轮询
 借助于setInterval等方式，客户端不断发送请求并得到相应。但轮询间隔过长，用户收到消息不及时，轮询间隔太短，增加服务器负担。
+
+
 
 ### 2.3 长轮询
 客户端发出请求后，服务端用while(true)等方式阻塞住请求，直到有可用数据发送响应，又称为“comet”、“反向ajax”。但仍然是基于http的一种慢响应。
