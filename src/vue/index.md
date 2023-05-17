@@ -116,6 +116,56 @@
   }
 ```
 
+### Array怎么进行侦测？
+原理：继承原型，对继承后对象使用Object.defineProperty做拦截操作。
+简要代码：
+```js
+class Observe {
+  constructor(value) {
+    ...
+    if (Array.isArray(value)) {
+      // 不想直接修改Array.prototype，只希望data的Array生效
+      value._proto_ = arrayMethods;
+      this.observeArray(value);
+      
+    } else {
+      ...
+    }
+    ...
+    const arrayProto = Array.prototype;
+    const arrayMethods = Object.create(arrayProto);
+    ['psuh', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse'].forEach(function(method) {
+      const original = arrayProto[method];
+      def(arrayMethods, method, function mutator(...args) {
+        const result = original.apply(this, args);
+        const ob = this.__ob__;
+        let inserted;
+        // 3种会新增数组
+        switch(method) {
+          case 'push':
+          case 'unshift':
+            inserted = args;
+            break;
+          case 'splice':
+            inserted = args.slice(2);
+            break;
+        }
+        
+        // 将新增元素也转换成被侦测数据
+        if (inserted) {
+          ob.observeArray(inserted);
+        }
+        // 调用实例发送通知
+        ob.dep.notify();
+        return result;
+      });
+    });
+  }
+}
+```
+
+
+
 ## 2 Diff
 主要策略：  
 1. 按tree层级diff  
@@ -287,3 +337,5 @@ function createComputedGetter(key) {
 3. 当首次获取计算属性的值时，Dep开始依赖收集
 4. 在执行某个属性 getter方法时，如果Dep处于依赖收集状态，则判定该属性为计算属性的依赖，并建立依赖关系
 5. 当 某个属性发生变化时，根据依赖关系，触发计算属性的重新计算
+
+
