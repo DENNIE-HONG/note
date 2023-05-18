@@ -166,3 +166,16 @@ document.readystate: loading.
 6. 触发DOMContentLoaded事件 -> 异步事件驱动；
 7. 等待图片载入  -> 异步脚本载入与执行 -> 触发load事件，document.readystate: complete;
 8. 调用异步事件：用户输入等；
+
+# 6. 浏览器渲染过程
+
+```js
+ _________________________________________________
+| JavaScript | Style | Layout | Paint | Composite |
+ —————————————————————————————————————————————————
+```
+* JavaScript: 执行js来触发视觉效果；
+* Style: 计算元素匹配的css选择器，应用各规则计算元素最终样式；
+* Layout: 根据样式，计算元素占据空间大小和位置；
+* Paint: 填充可视部分，文本、图像、边框、阴影；
+* Composite: 不同层按顺序绘制到屏幕上；
