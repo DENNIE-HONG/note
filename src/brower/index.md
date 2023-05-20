@@ -198,3 +198,167 @@ document.readystate: loading.
 * Layout: 根据样式，计算元素占据空间大小和位置；
 * Paint: 填充可视部分，文本、图像、边框、阴影；
 * Composite: 不同层按顺序绘制到屏幕上；
+
+
+# 7. 跨域
+跨域解决方案：
+## 方案1： jsonp
+```html
+<script>
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src = 'http://xxx?user=admin&callback=onBack';
+  document.head.appendChild(script);
+
+  // 回调执行
+  function onBack(res) {
+    alert(JSON.stringfy(res));
+  }
+</script>
+```
+缺点：只能实现get请求。
+
+## 方案2：document.domain + iframe
+父窗口：
+```html
+<iframe id="iframe" src="htp://child.domain.com/b.html"></iframe>
+<script>
+  document.domain = 'domain.com';
+  var user = 'admin';
+</script>
+```
+子窗口：
+```html
+<script>
+  document.domain = 'domain.com';
+  alert(window.parent.user);
+</script>
+```
+缺点：仅限主域相同，子域不同的应用场景。
+
+### 方案3：location.hash + iframe
+a域与b域相互通信，通过中间页c来实现，不同域利用iframe的location.hash传值，相同域之间js访问。
+1. a.html(domain1.com)
+```html
+<iframe id="iframe" src="http://domain2.com/b.html" style="display:none"></iframe>
+<script>
+  var iframe = document.getElementById("iframe");
+  // 向b传hash值
+  setTimeout(() => {
+    iframe.src = iframe.src + '#user=admin';
+  }, 1000);
+  // 开放给同域c.html回调
+  function onCallbac(res) {
+    alert(res);
+  }
+</script>
+```
+
+2. b.html(domain2.com)
+```html
+<iframe id="iframe" src="http://domain1.com/c.html" style="display:none;"></iframe>
+<script>
+  var iframe = document.getElementByiId("iframe");
+  // 监听a.html传来的hash值，再传给c.html
+  window.onhashchange = function() {
+    iframe.src = iframe.src + location.hash;
+  }
+</script>
+```
+
+3. c.html(domain1.com)
+```html
+<script>
+  // 监听b.html传来的hash值
+  window.onhashchange = function() {
+    // 同域a.html的js回调
+    window.parent.parent.onCallback('hello' + location.hash.replace('#user=', ''));
+  };
+</script>
+```
+
+### 方案4：window.name + iframe
+window.name值在不同页面加载后依旧存在，可支持（2M）的值。  
+1. a.html(domain1.com/a.html)
+```js
+var proxy = function(url, callback) {
+  var state = 0;
+  var iframe = document.createElement('iframe');
+  // 加载跨域页面
+  iframe.src = url;
+  // onload事件触发2次，第一次加载跨域页面，并留存数据window.name
+  iframe.onload = function() {
+    if (state === 1) {
+      // 第二次onload（同域proxy）成功后，读取同域window.name中数据
+      callback(iframe.contentWindow.name);
+      destroyFrame();
+    } else {
+      // 第一次onload成功，切换到同域代理页
+      iframe.conentWindow.location = 'http://domain1.com/proxy.html';
+      state = 1;
+    }
+  }
+  document.body.appendChild(iframe);
+  // 获取数据后销毁
+  function destroyFrame() {
+    iframe.contentWindow.document.write('');
+    iframe.contentWindow.close();
+    document.body.removeChild(iframe);
+  }
+}
+
+// 执行
+proxy('http://domain2.com/b.html', function(data) {
+  alert(data);
+});
+```
+
+2. proxy.html
+内容为空
+3. b.html(domain2.com/b.html)
+```html
+<script>
+  window.name = "This is domain2.com";
+</script>
+```
+
+### 方案5：postMessage
+1) 页面和其打开的新窗口的数据传递  
+2) 多窗口之间消息传递
+3) 页面与嵌套的iframe消息传递
+
+1. a.html(domain1/a.html)
+```html
+<iframe id="iframe" src="http://domain2.com/b.html"></iframe>
+<script>
+  var iframe = document.getElementById("iframe");
+  iframe.onload = function() {
+    var data = {
+      name: 'aym'
+    };
+    // 向domain2传数据
+    iframe.contentWindow.postMessage(JSON.stringify(data), 'http://domain2.com');
+  };
+  // 接收domain2返回数据
+  window.addEventListener('message', function(e) {
+    console.log(e.data);
+  }, false);
+</script>
+```
+
+2. b.html(domain2.com/b.html)
+```html
+<script>
+  // 接收域名1的数据
+  window.addEventListener('message', function(e) {
+    console.log(e.data);
+     var data = JSON.parse(e.data);
+     if (data) {
+       data.number = 16;
+       // 处理后发回域名
+       window.parent.postMessage(JSON.stringify(data), 'http://domain1.com');
+     }
+  }, false);
+
+</script>
+```
