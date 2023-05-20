@@ -7,11 +7,11 @@
 
 ## 2. meta viewport是做什么的？怎么写？
 手机浏览器是把页面放在一个虚拟的“窗口”中，通常这个虚拟窗口比屏幕宽，用户可通过平移和缩放来看网页的不同部分。
-
 ```html
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" user-scaleble="no" />
 ```
-即viewport宽度为物理设备上的真实分辨率，不允许用户缩放，网页显得更高更细腻。
+即viewport宽度为物理设备上的真实分辨率，不允许用户缩放，网页显得更高更细腻。  
+完美适配：用户不需缩放和横向滚动条即可查看网站所有内容，比如14px的字在何种分辨率下，显示大小应差不多。
 
 ## 3. canvas和svg区别 ？
 1. svg绘制的每一个图形元素都是独立的DOM节点，canvas输出一整副画布；

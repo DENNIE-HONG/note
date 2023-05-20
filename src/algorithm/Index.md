@@ -6,6 +6,34 @@
 ### 选择排序
 找到数组最小值，放在第一位，...以此类推。o(n^2)
 
+```js
+function selectSort(arr) {
+  const len = arr.length;
+  let temp = null;
+  let minIndex = null;
+  for (let i = 0; i < len - 1; i++) {
+    // 假设当前索引为最小索引
+    minIndex = i;
+    for (let j = i +1; j < len; j++) {
+      // 比假设值还小
+      if (arr[j] < arr[minIndex]) {
+        // 找到最小索引位置
+        minIndex = j; 
+      }
+    }
+    // 当前项值和最小值交换位置
+    if (i !== minIndex) {
+      temp = arr[i];
+      arr[i] = arr[minIndex];
+      arr[minIndex] = temp;
+    }
+  }
+  return arr;
+}
+
+
+```
+
 ### 插入排序
 o(n^2)
 

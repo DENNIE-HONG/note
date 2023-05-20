@@ -21,6 +21,22 @@ console.log(a); // [1, 2, 3, 4]
 ### map
 返回新数组
 
+### push
+push原理例子
+```js
+let obj = {"1": 'a', '2': 'b', length: 2};
+Array.prototype.push.call(obj, 'c');
+console.log(obj); 
+
+// 解,push的原理
+Array.prototype.push = function(target) {
+  obj[target.length] = target;
+  obj.length++;
+}
+// obj[2] = c, length = 3
+// {"1": 'a', "2": 'c', length: 3}
+```
+
 
 
 ## 2. 稀疏数组
@@ -53,4 +69,32 @@ console.log(Array.prototype.join.call(a, '+')); // 'a+b+c'
 ```js
 const s = "JavaScript";
 console.log(Array.prototype.join.call(s, ' ')); // J a v a S c r i p t
+```
+
+## 数组小式一笔
+### 扁平化
+数组展开？
+```js
+function flatten(arr) {
+  return [].concat(
+    ...arr.map(x => Array.isArray(x) ? flatten(x): x)
+  );
+}
+```
+
+### 创建数组
+例子：不用循环，创建一个长度为100，每个元素等于下标的数组？
+1. 递归
+```js
+function createArray(len, arr = []) {
+  if (len > 0) {
+    arr[--len] = len;
+    createArray(len, arr);
+  }
+  return arr;
+}
+```
+2. 
+```js
+ [...Array(100).keys()]
 ```
