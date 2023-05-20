@@ -135,6 +135,10 @@ div {
 ```
 
 
+## 伪元素
+::before 和 :after中双冒号和单冒号有什么区别？
+单冒号用于css伪类；
+双冒号用于css伪元素；
 
 
 ## 小技巧
@@ -163,4 +167,14 @@ hyphens: auto;
   transform: rotate(45deg);
 }
 
+```
+
+### 禁止文本缩放
+```css
+-webkit-text-size-adjust: 100%;
+```
+
+### 字体在移动端比例缩小后出现锯齿
+```css
+-webkit-font-smoothing: antialiased;
 ```

@@ -117,6 +117,25 @@ cookie优化：
 解决：  
 多域名拆分，将静态资源分组，放到不同域名下
 
+## sessionStorage/localStorage/cookie区别？
+1. 都会在浏览器保存，有大小限制，同源限制；
+2. cookie在请求时发送到服务器，作为会话标识，服务器可修改cookie，webstorage不会发送到服务器；
+3. cookie有path概念，子路径可访问父路径cookie，父路径不能访问子；
+4. 有效期：
+* cookie在设置有效期内有效，默认为浏览器关闭；
+* sessionStorage在窗口关闭前有效；
+* localStorage长期有效，直到用户删除；
+5. 共享：
+  * sessionStorage不能共享；
+  * localStorage在同源文档中间共享；
+* ；
+6. localStorage的修改会促发其他文档窗口的update事件；
+7. cookie有sercure属性要求HTTPS传输；
+8. 浏览器不能保存超过300个cookie，单个服务器不超过20个，每个cookie不超4k，web storage支持达到5M;
+
+
+
+
 # 3. DNS解析过程？
 1. 浏览器缓存
 2. 寻找本地localhost，看有没有该域名对应的ip
@@ -159,10 +178,10 @@ Event Loop顺序:
 # 5.执行时间线
 1. 创建Document对象 -> 解析HTML元素 -> 添加Element对象和Text节点，
 document.readystate: loading.
-2. 遇到\<script\>执行脚本，解析器暂停；
-3. 遇到async的\<script\> -> 下载脚本，继续解析文档；
+2. 遇到\<script\>执行行内or外部脚本，脚本同步执行，脚本下载时解析器暂停；
+3. 遇到async的\<script\> -> 开始下载脚本并继续解析文档，脚本会下载完后尽快执行，但解析器不会停下等它下载；
 4. 文档完成解析，document.readystate:interactive;
-5. defer的\<script\>执行脚本；
+5. 所有defer的\<script\>按照文档出现顺序执行脚本；
 6. 触发DOMContentLoaded事件 -> 异步事件驱动；
 7. 等待图片载入  -> 异步脚本载入与执行 -> 触发load事件，document.readystate: complete;
 8. 调用异步事件：用户输入等；
