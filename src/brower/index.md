@@ -128,7 +128,7 @@ cookie优化：
 5. 共享：
   * sessionStorage不能共享；
   * localStorage在同源文档中间共享；
-* ；
+  * ciikie同源且符合path规则的文档之间共享；
 6. localStorage的修改会促发其他文档窗口的update事件；
 7. cookie有sercure属性要求HTTPS传输；
 8. 浏览器不能保存超过300个cookie，单个服务器不超过20个，每个cookie不超4k，web storage支持达到5M;
@@ -248,7 +248,7 @@ a域与b域相互通信，通过中间页c来实现，不同域利用iframe的lo
     iframe.src = iframe.src + '#user=admin';
   }, 1000);
   // 开放给同域c.html回调
-  function onCallbac(res) {
+  function onCallback(res) {
     alert(res);
   }
 </script>
