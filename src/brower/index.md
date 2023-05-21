@@ -362,3 +362,116 @@ proxy('http://domain2.com/b.html', function(data) {
 
 </script>
 ```
+
+### 方案6：CORS
+普通跨域请求：服务端Access-Control-Allow-Origin, 前端无须设置。  
+前端代码：  
+```js
+// 是否带cookie
+xhr.withCredentials = true;
+xhr.open('post', 'http://domain2.com:8080/login', true);
+xhr.seRequestHeader('Content-Type', 'application/x-www-form-urlencode');
+xhr.send('user=admin');
+...
+```
+服务端设置：  
+```js
+const http = require('http');
+const server = http.createServer();
+const qs = require('querystring');
+server.on('request', function(req, res) {
+  let postData = '';
+  req.addListener('data', function(chunks) {
+    postData += chunks;
+  });
+  // 数据接收完毕
+  req.addListener('end', function() {
+    postData = qs.parse(postData);
+    // 跨域后台设置
+    res.writeHead(200, {
+      // 后端允许发cookie
+      'Access-Control-Allow-Credentials': 'true',
+      'Access-Control-Allow-Origin': 'http://domain1.com',
+      'Set-Cookie': '/=a123356;Path=/;Domain=domain2.com'
+    });
+    res.write(JSON.stringify(postData));
+    res.end();
+  });
+});
+server.listen(8080);
+```
+
+### 方案7： nginx代理
+浏览器跨域访问js/css/img等静态资源被同源策略许可，但iconfont例外，
+可在nginx中配置
+```
+location / {
+  add-header Access-Control-Allow-Origin *;
+}
+```
+nginx反向代理接口跨域：  
+通过nginx配置一个代理服务器（域名与1相同，端口不同）做跳板机，反向代理domain2接口，并可修改cookie中domain信息，方案当前域
+cookie写入，实现跨域登入。
+```
+server {
+  listen 81;
+  server_name domain1.com;
+
+  location / {
+    proxy-pass http://domain2.com:8080
+    proxy-cookie_domain domain2.com domain1.com;
+    index index.html index.htm;
+
+    add_header Access-Allow-Origin http://domain1.com;
+    add_header Access-Control-Allow-Credential true;
+  }
+}
+```
+
+### 方案8：Nodejs中间件代理跨域
+1. http-proxy-middleware 中间件
+2. 开发时，devServer配置proxy
+
+### 方案9：WebSocket协议
+实现浏览器与服务器全双工通信，允许跨域，可用socket.io  
+前端代码：
+```html
+<script src="./socket.io.js"></script>
+<script>
+  var socket = io('http://domain2.com:8080');
+  // 连接成功
+  socket.on('connect', function() {
+    // 监听
+    socket.on('message', function(msg) {
+      console.log(msg);
+    });
+    // 监听服务端关闭
+    socket.on('disconnect', function() {
+      console.log('close');
+    });
+  });
+  document.getElementByTagName('input')[0].onblur = function() {
+    socket.send(this.value);
+  };
+</script>
+```
+nodejs 后台
+```js
+const http = require('http');
+const socket = require('socket.io');
+const server = http.createServer(function(req, res) {
+  res.write(200, {
+    'content-Type': 'text/html';
+  });
+  res.end();
+});
+server.listen(8080);
+socket.listen(server).on('connection', function(client) {
+  // 接收
+  client.on('message', function(msg) {
+    client.send(`hello ${msg}`);
+  });
+  // 断开处理
+  client.on('disconnect', function() {});
+});
+```

@@ -29,7 +29,7 @@ Flash of Unstyled Content: 用户定义样式表加载之前浏览器使用默�
 ## 4. 自适应
 UE图像素单位 => rem ?  
 假设UE尺寸640px，UE稿中一个100px，css中写成什么尺寸？  
-例如：用sass处理
+例如：用sass处理  
 因为100 / 640 * 100 = 15.625rem;
 ```html
 <script>
