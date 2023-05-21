@@ -35,7 +35,26 @@ function selectSort(arr) {
 ```
 
 ### 插入排序
-o(n^2)
+o(n^2)，类似打扑克牌排大小
+思路：将第一个元素视为有序序列，遍历数组，将之后元素依次插入这个构建的有序序列中。
+```js
+function insertionSort(arr) {
+  for (let i = 1; i < arr.length; i++) {
+    const element = arr[i];
+    for (var j = i - 1; j >= 0; j--) {
+      const tmp = arr[j];
+      if (tmp > element) {
+        arr[j + 1] = tmp;
+      } else {
+        break;
+      }
+    }
+    arr[j+1] = element;
+  }
+  return arr;
+}
+
+```
 
 ### 归并排序
 数组分成足够小，合并2个有序数组，o(nlogn)
