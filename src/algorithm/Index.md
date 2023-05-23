@@ -94,3 +94,40 @@ function quickSort(a) {
   return a.length <= 1 ? a : quickSort(a.slice(1).filter((item) => item <= a[0])).concat(a[0], quickSort(a.slice(1).filter((item) => item > a[0])));
 }
 ```
+
+
+## 2. 乱序
+### 普通版
+```js
+function shuffle(arr) {
+  return arr.sort(() => Math.random() - 0.5);
+}
+```
+问题：并不是真正随机
+v8处理sort时，当目标数组长度 < 10时使用插入排序，反之使用快速排序。
+元素之间比较次数 << n*(n-1)/2, 某些元素之间没比较的机会（也就无交换的可能）。
+
+### 真正的乱序(Fisher-Yates算法)
+1. 排序好数组：1 2 3 4 5 6 7 8 9
+2. 末尾开始，选最后一个数：1 2 3 4 5 6 7 8 「9」
+3. 在9个位置中随机选中一个位置，与最后一个元素交换。
+```js
+1 2 [9] 4 5 6 7 8 [3]
+     \____________/
+```
+4. 对倒数第2个元素，除去最后一个位置，再随机选一个变换；
+```js
+ [8] 2 9 4 5 6 7 [1] 3
+  \______________/
+```
+5. 以此类推；
+```js
+function shuffles(arr) {
+  let m = arr.length;
+  while(m > 1) {
+    let index = Math.floor(Math.random() * m--);
+    [arr[m], arr[index]] = [arr[index], arr[m]];
+  }
+  return arr;
+}
+```
