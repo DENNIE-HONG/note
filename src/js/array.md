@@ -56,6 +56,24 @@ O in a1; // true
 const c = Array.from({length: 4});
 ```
 
+### Array.from
+Array.from的映射功能：第2个参数是一个映射回调；
+举个🌰：
+```js
+const arrLike = {
+  length: 4,
+  2: "foo"
+};
+Array.from(arrLike, function mapper(val, idx) => {
+  if (typeof val === "string") {
+    return val.toUpperCase();
+  } else {
+    return idx;
+  }
+});
+// [0,1,"FOO",3]
+```
+
 ## 3. 类数组
 拥有数值length属性，非负整数属性的对象。数组方法可用在类数组上。
 例如：
