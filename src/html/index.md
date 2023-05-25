@@ -26,7 +26,7 @@ Flash of Unstyled Content: 用户定义样式表加载之前浏览器使用默�
 解决：样式表放到head
 
 
-## 4. 自适应
+## 5. 自适应
 UE图像素单位 => rem ?  
 假设UE尺寸640px，UE稿中一个100px，css中写成什么尺寸？  
 例如：用sass处理  
@@ -45,4 +45,36 @@ UE图像素单位 => rem ?
 p {
   width: px2rem(100);
 }
+```
+
+## 6. attr和Property
+**HTML attribute 和DOM Property区别？**
+| HTML attribute     | DOM Property     |
+| ---------------    | -----------------|
+|值永远是字符串or null  |值可以是任意合法js类型|
+| 大小写不敏感          | 大小写敏感|
+|不存在返回null|不存在返回undefined|
+|对于href,返回html|对于href返回解析后的完整url|
+|设置的值||
+|更新value，属性也更新|更新value，特性不更新|
+
+```html
+<input id="name" value="justjavac" />
+html -> DOM对象，HTML特性 -映射-> DOM属性
+```
+可添加非标属性
+```html
+<input foo="bar" id="name" />
+```
+只映射标准：
+```js
+const el = document.getElementById('name');
+el.foo === undefined;
+```
+
+```js
+el.getAttribute('checked') === ''; // 特性是字符串
+el.checked === false; // 属性是boolean类型
+el.getAttribute('href') === '#tag'; // 特性原样返回
+el.href === 'http://xxx#tag'; // 属性返回解析后完整url
 ```
