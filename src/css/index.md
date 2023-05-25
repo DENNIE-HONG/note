@@ -141,6 +141,68 @@ div {
 双冒号用于css伪元素；
 
 
+## 流体布局
+块级元素：
+1. width固定，margin是auto，即margin撑满剩下的空间；
+2. margin固定，width是auto，width撑满剩下的空间；
+
+### css的外在盒子和内在盒子
+例：display：inline-table;
+外在盒子：inline,决定像内联元素一样并排显示；
+内在盒子：table，决定了元素可以设置宽高、垂直方向的margin等。
+
+### 块级元素
+垂直方向发生margin合并：
+1. 相邻兄弟元素之间margin合并；
+2. 父的margin-top和子的margin-top；
+  父的margin-bottom和子的margin-bottom；
+3. 空块级元素自身的margin-top和margin-bottom;
+
+阻止margin合并方法：
+1. bfc;
+2. border、padding阻隔margin；
+3. 内联元素阻隔；
+4. 父元素设高；
+
+### 内联元素
+vertical-align:
+* sub super: 使元素的基线与父元素下标基线对齐；
+* 20px 2em: baseline相当于0，使元素的基线对齐到父元素的基线之上给定长度；
+* 20%：元素的基线对齐到父元素的基线之上的百分比，是line-height的百分比；
+
+## 层叠上下文
+css3新增层叠上下文：
+1. opacity !== 1;
+2. transform !== none;
+3. filter !== none;
+4. isolution: isolate;
+5. mix-blend-mode !== normal;
+6. -webkit-overflow-scrolling: touch;
+7. will-change: opacity/transform...;
+8. z-index不为auto的弹性盒子的子元素
+
+层叠上下文内元素的层叠水平：
+```js
+ ___________________
+| border/background |
+|    __________________
+ ———|负值z-index       |
+    |   ________________
+     ——|块级盒子         |
+       |   ________________
+        ——|浮动盒子         |
+          |   ________________ 
+           ——|内联盒子         |
+             |   ________________
+              ——|z-index:auto/0  |
+                |   ________________
+                 ——|正z-index       |
+                   |                |
+                    ————————————————
+```    
+
+
+
 ## 小技巧
 ### 有切角的阴影
 ```css

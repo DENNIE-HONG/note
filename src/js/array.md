@@ -37,6 +37,9 @@ Array.prototype.push = function(target) {
 // {"1": 'a', "2": 'c', length: 3}
 ```
 
+### for of
+循环可通过break、continue、return 提前终止。
+
 
 
 ## 2. 稀疏数组
