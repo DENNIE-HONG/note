@@ -6,3 +6,31 @@
 * import的模块名只能是字符串常量；
 * 模块初始化时候所有import必须导入完成；
 * import binding 是immutable的，类似const
+
+## modules
+打包后文件内容"框架"：
+```js
+(function(modules) {
+  var installedModules = {};
+  // 模块加载方法
+  function _webpack_require_(moduleId) {
+    if (installedMudules[moduleId]) {
+      return installedModules[moduleId].exports;
+    }
+    var module = installedModules[moduleId] = {
+      i:moduleId,
+      l: false,
+      exports: {}
+    };
+    // 通过模块名找对应模块函数并执行
+    modules[moduleId].call(module.exports, module, module.exports, _webpack_require_);
+    module.l = true;
+    return module.exports;
+  }
+  return _webpack_require_("./src/xx.js");
+})({
+  "./src/xx.js": (function(module, exports) {
+      eval(...)
+  })
+})
+```
