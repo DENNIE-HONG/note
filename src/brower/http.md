@@ -153,6 +153,15 @@ HTTP通过缓存将服务器文档的副本保留一段时间，在这段时间�
 * 未命中：服务器与缓存副本不同，服务器发带有完整内容的HTTP 200 OK；
 * 对象被删除：服务器返回404响应，缓存也会删除其副本。
 
+**cache-control和etag有什么区别？**
+
+1. cache-control：缓存控制头部，有no-cache、max-age等多种取值，用来控制强制缓存，在时间之内直接返回本地缓存，值是绝对时间。
+2. IF-None-Match/Etag： 成对出现，属于协商缓存内容。服务端头部是Etag，浏览器端是IF-None-Match，发出请求后，如果这2种匹配，则代表内容未变，通知浏览器使用本地缓存。
+
+**Max-Age和Expries相比？**
+Expries是http1.0内容，使用服务端时间，如果客户端与服务端时间不同步，可能造成缓存无用or 无法过期。
+而Max-Age是客户端本地时间的计算，Cache-Control比Expries优先级高。
+
 
 
 # 5.HTTPS
