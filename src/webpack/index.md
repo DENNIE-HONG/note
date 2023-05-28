@@ -1,4 +1,5 @@
 # webpack
+
 ## tree-shaking（摇树）
 是无用代码移除（DCE, dead code elimination）的一个方法。找出需要的代码，灌入最终的结果。都是依赖ES6 modules的静态特性才得以实现。
 静态特性：
@@ -12,7 +13,7 @@
 ```js
 (function(modules) {
   var installedModules = {};
-  // 模块加载方法
+  // 模块加载方法, 做了缓存优化
   function _webpack_require_(moduleId) {
     if (installedMudules[moduleId]) {
       return installedModules[moduleId].exports;
@@ -34,3 +35,8 @@
   })
 })
 ```
+
+## 原理
+本质上是一种事件机制，工作流程即将各个插件串联起来，通过Tapable。
+* 负责编译：Complier,包含了webpack环境所有配置信息，全局唯一。整个webpack从启动到关闭的生命周期。
+* 负责创建bundles:Compilation，包含了当前模块资源、编译生成资源、变化的文件等。开发模式时，检测到一个文件变化，一个新的compliation被创建。

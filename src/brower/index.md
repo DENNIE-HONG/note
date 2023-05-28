@@ -215,6 +215,45 @@ document.readystate: loading.
 css由单独的下载线程异步下载。
 不会阻塞DOM树解析，但是会阻塞render树渲染（渲染时要等css加载完）。
 
+## DOMContentLoaded事件
+当一个HTML文档被加载和解析完成后，DDOMContentLoaded事件触发。
+```js
+ ____     ___
+|HTML|——>|DOM|
+ ————     ———  \  ______     ______     _____
+                 |Render|——>|Layout|——>|Paint|
+                 | Tree |    ——————     —————
+ ___     _____/   ——————
+|CSS|——>|CSSOM|  
+ ———     —————
+
+
+```
+
+## 异步脚本defer和async的区别？
+
+同步脚本：停止解析，先加载脚本，执行脚本，继续解析HTML.
+
+<font color="green">=======<font color="gray">=====</font>=====</font>
+
+<span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><font color="blue">==</font><font color="pink">===</font>
+
+defer脚本：后台加载脚本，等文档解析完，defer脚本执行。
+<font color="green">=================</font>  
+<span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><font color="blue">==</font><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><font color="pink">===</font>
+
+async脚本：后台加载脚本，文档解析不中断，加载后文档停止解析，脚本执行。
+
+<font color="green">=========<font color="gray">===</font>==</font>  
+<span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><font color="blue">==</font><font color="pink">===</font>
+
+图例：
+* <font color="green">HTML解析</font>  
+* <font color="gray">HTML暂定</font>
+* <font color="blue">script下载</font>
+* <font color="pink">script执行</font>
+
+
 
 
 

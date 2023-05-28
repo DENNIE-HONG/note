@@ -253,3 +253,18 @@ hyphens: auto;
   }
 }
 ```
+
+### css数据上报
+比如根据某个按钮的点击事件
+```css
+.button:active::after {
+  content: url(./pixel.gif?action=click&id=button)
+  display: none;
+}
+```
+比如统计用户表单操作成功率
+```css
+.track:invalid {
+  background: url(./pixel.gif?action=rogister&status=invalid);
+}
+```
