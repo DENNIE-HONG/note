@@ -339,3 +339,143 @@ function createComputedGetter(key) {
 5. 当 某个属性发生变化时，根据依赖关系，触发计算属性的重新计算
 
 
+## 5. vue模板编译原理
+1. 将模板字符串转换成elements ASTs(解析器)；
+2. 对AST进行静态节点标记，主要用来做虚拟dom的渲染优化（优化器）；
+3. 使用elements ASTs生成render函数代码字符串（代码生成器）
+
+例如：
+```html
+<div><p>{{name}}</p></div>
+```
+
+elements AST:
+```js
+{
+  // 以"<"开头截取的这段字符串是标签or文本
+  tag："div",
+  type: 1,
+  staticRoot: false,
+  parent: undefined,
+  children: [
+    {
+      tag: "p",
+      type: 1,
+      staticRoot: false,
+      static: false,
+      children: [{
+        type: 2,
+        text: "{{name}}",
+        static: false,
+        ...
+      }]
+    }
+  ]
+}
+```
+### 截取文本；
+
+```js
+// 比如div解析后剩余模板字符串<p>{{name}}</p></div>
+let textEnd = html.indexOf('<');
+let text,rest, next;
+if (textEnd >= 0) {
+  rest = html.slice(textEnd);
+  // 剩余部分html不符合标签格式暂定是文本
+  // 并且是以<开头的文本
+  const ncname = '[a-zA-Z][\\w\\-\\.]*';
+  const qnameCapture = `((?:${ncname}\\:)?${ncname})`;
+  const startTagOpen = new RegExp(`^<${qnameCapture}`);
+  const startTagClose = /^\s*(\/?)>/;
+  while(!endTag.test(rest) && !startTagOpen.test(rest) && ...) {
+    next = rest.indexOf('<', 1);
+    if (next < 0) {
+      break;
+    }
+    textEnd += next;
+    rest = html.slice(textEnd);
+  }
+  text = html.substring(0, textEnd);
+  html = html.suustring(0, textEnd);
+}
+```
+解析文本：
+* 纯文本：直接将文本节点的ast push到parent的children中；
+* 带变量：多一个const expression = parseText(text, delimiters);
+
+结束标签的处理：
+用当前标签名在stack从后往前找，将找到的stack中的位置往后的所有标签删除。
+
+标记静态节点好处：
+1. 每次重新渲染不需要为静态节点创建节点；
+2. 在虚拟dom中patching过程跳过；
+
+### 代码生成器：
+
+elements ASTs ——> render函数代码
+例如开头AST：
+```js
+render: `with(this) {
+  return _c('div', [_c('p', [_v(_s(name))])])
+}`
+
+// 即
+with(this) {
+  return _c(
+    'div',
+    [_c(
+      'p',
+      [_v(_s(name))]
+    )]
+  )
+}
+// _c: createElement(创建一个元素)
+// _v: 创建文本节点
+// _s: 返回参数中字符串
+
+function genData(el, state) {
+  let data = '{';
+  if (el.key) {
+    data += `key:${el.key},`;
+  }
+  if (el.ref) {
+    data += `ref:${el.ref},`;
+  }
+  if (el.refInFor) {
+    data += `refInFor:true,`;
+  }
+  if (el.pre) {
+    data += `pre:true,`;
+  }
+  // 类似...
+  data = data.replace(/,$/, '') + '}';
+  return data;
+}
+
+function genChildren(el, state) {
+  const children = el.children;
+  if (children.length) {
+    return `[${children.map(c => genNode(c, state)).join(',')}]`;
+  }
+}
+
+function genNode(node, state) {
+  if (node.type === 1) {
+    return genElement(node, state);
+  }
+  if (node.type === 3 && node.isComment) {
+    return genComment(node);
+  } else {
+    return genText(node); // 带变量文本
+  }
+}
+
+function genElement(el, state) {
+  const data = el.plain ? undefined : genData(el, state);
+  const children = el.inlineTemplate ? null ? genChildren(el, state, true);
+  let node = `_c['${el.tag}'${data ? `,${data}`: ''} ${
+    children ? `,${children}`: ''
+  }]`;
+  return node;
+}
+```
