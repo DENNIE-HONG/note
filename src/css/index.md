@@ -240,3 +240,16 @@ hyphens: auto;
 ```css
 -webkit-font-smoothing: antialiased;
 ```
+
+### Retina下1px的解决方案
+在devicePixelRatio = 2时，借助媒体查询来处理
+```css
+.border {
+  border: 1px solid black;
+}
+@media (-webkit-min-device-pixel-ratio: 2) {
+  .border {
+    border-width: 0.5px;
+  }
+}
+```

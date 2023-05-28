@@ -58,6 +58,42 @@ function insertionSort(arr) {
 
 ### 归并排序
 数组分成足够小，合并2个有序数组，o(nlogn)
+1. 把长度为n的输入排序分成2个长度为n/2的子序列；
+2. 对这2个子序列分别归并排序；
+3. 子序列合成一个最终排序；
+
+```js
+
+function merge(left, right) {
+  const result = [];
+  whilre(left.length && right.length) {
+    if (left[0] <= right[0]) {
+      result.push(left.shift());
+    } else {
+      result.push(right.shift());
+    }
+  }
+  while(left.length) {
+    result.push(left.shift());
+  }
+  while(right.length) {
+    result.push(right.shift());
+  }
+  return result;
+}
+function mergeSort(arr) {
+  const len = arr.length;
+  if (len < 2) {
+    return arr;
+  }
+  const middle = Math.floor(len / 2);
+  const left = arr.slice(0, middle);
+  const right = arr.slice(middle);
+  return merge(mergeSort(left), mergeSort(right));
+}
+```
+
+
 
 ### 快排
 时间复杂度：o(nlogn)  
