@@ -201,6 +201,13 @@ css3新增层叠上下文：
                     ————————————————
 ```    
 
+## word-break
+控制单词如何拆分换行
+* keep-all："单词"一律不拆分换行，只有空格触发自行换行；
+* break-all: 碰到边界一律换行，强行拆分；
+
+### word-wrap
+* break-word: 只有当一个单词整行都显示不下时才拆分换行；
 
 
 ## 小技巧
@@ -266,5 +273,50 @@ hyphens: auto;
 ```css
 .track:invalid {
   background: url(./pixel.gif?action=rogister&status=invalid);
+}
+```
+### 输入大写字母
+```css
+text-transform: uppercase;
+```
+
+### 内边框
+```css
+div {
+  outline: dashed red;
+  outline-offset: -10px;
+}
+```
+
+### 文字下划线
+第一种： 
+```css
+div {
+  box-shadow: 0 -1px 0 0 #fff inset;
+}
+```
+第二种：
+```css
+a {
+  padding-bottom: 1px;
+  background: linear-gradient(#000, #000) no-repeat;
+  background-size: 100% 1px;
+  background-position: 0 18px;
+}
+```
+
+### 基于文件格式使用不同样式
+比如对不同链接添加不同图表
+```css
+a[href^="http://"] {
+  padding-right: 20px;
+  background: url(xx.png) no-repeat center right;
+}
+a[href^="mailto:"] {
+  padding-right: 20px;
+  background: url(email.png) no-repeat center right;
+}
+a[href$=".pdf"] {
+  ...
 }
 ```

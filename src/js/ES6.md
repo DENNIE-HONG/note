@@ -41,3 +41,48 @@ hello.default = 42; //typeError!
 hello.bar = 42; // typeError
 ```
 局部导入绑定的只读性限制了无法从导入的绑定修改！
+
+## Symbol
+#### Symbol.toStringTag
+原型的@@toStringTag符号指定了在[object ---]字符串化时使用的字符串值。
+例如：
+```js
+function Foo() {}
+const a = new Foo();
+a.toString(); // [object Object]
+a instanceof Foo; // true
+
+// 改
+Foo.prototype[Symbol.toStringTag] = "Foo";
+const b = new Foo();
+a.toString(); // [object Foo]
+
+```
+
+#### Symbol.hasInstance
+@@hasInstance符号是在构造器函数上的一个方法，接受实例对象值，通过返回true/false来表示这个值是否可以被认为是一个实例。
+例如：
+```js
+function Foo(greeting) {
+  this.greeting = greeting;
+}
+Object.definePropery(Foo, Symbol.hasInstance, {
+  value: function(inst) {
+    return inst.greeting === 'hello';
+  }
+});
+const a = new Foo('hello');
+const b = new Foo('world');
+a instanceof Foo; // true
+b instanceof Foo; // false
+```
+
+#### Symbol.isConcatSpreadable
+用来指示如果传给一个数组的concat(...), 是否应该将其展开。
+例如：
+```js
+const a = [1, 2, 3];
+const b = [4, 5, 6];
+b[Symbol.isConcatSpreadable] = false;
+[].concat(a, b); // [1, 2, 3, [4, 5, 6]]
+```
