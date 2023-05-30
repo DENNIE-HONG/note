@@ -254,6 +254,29 @@ async脚本：后台加载脚本，文档解析不中断，加载后文档停止
 * <font color="pink">script执行</font>
 
 
+## 浏览器加载资源过程
+1. 如何知道应加载哪些？
+2. 按什么顺序？
+
+将资源分类 ——> 资源安全策略检查——>资源优先级计算——>根据优先级下载资源
+
+### 浏览器资源分类
+* kMainResource
+* kImage
+* kCSSStyleSheet
+* kScript
+* kFont
+* kRaw(比如ajax请求)
+* kSVGDocument
+* kLinkPrefetch
+* kTextTrack(视频字幕)
+* kMedia
+* kMainfest
+* 等等
+
+
+
+
 
 
 
@@ -583,4 +606,51 @@ socket.listen(server).on('connection', function(client) {
   // 断开处理
   client.on('disconnect', function() {});
 });
+```
+
+
+# 8. Navigation Timing
+页面加载性能指标
+```js
+
+
+          __________________Resource Timing_________________________________
+         |                                                                  |
+         |                                                                  |
+         |                domainLookUpStart                                 |  domInteractive
+         |                     |   domainLookUpEnd                          | |
+        redirectStart          |   | connectStart                           | | domContentLoadedEventStart
+         |     redirectEnd     |   | |  secureConnectionStart               | | |      domContentLoadedEventEnd
+startTime|        | fetchStart |   | |  |       ConnectEnd                  | | |      | domComplete
+↓ _____  ↓________↓ ↓________  ↓___↓ ↓__↓_______↓      ________   __________| ↓_↓______↓_↓  ______
+|Pronpt| |Redirect| |AppCache| |DNS| |  TCP     |     |Request | | Response | |Processing| | Load |
+|for   | |        | |        | |   | |          |     |        | |          | |          | |      |
+|unload| |        | |        | |   | |          |     |        | |          | |          | |      |
+↑——————↑  ————————   ————————   ———   ——————————      ↑————————  ↑——————————↑  ——————————  ↑——————↑
+|      unloadEventEnd                                requestStart|          responseEnd    |      loadEventEnd
+unloadEventStart                                                 responseStart             loadEventStart
+
+                 
+```
+页面加载时间：
+```js
+// 页面加载时间：
+const [{domComplete}] = performance.getEntriesByType('navigation');
+
+// 资源加载时间
+const [{startTime, responseEnd}] = performance.getEntriesByType('resouce');
+const loadTime = responseEnd - startTime;
+```
+资源的加载信息如下所示：
+```js
+{
+  "connectEnd":: 462.95xxx,
+  "connectStart": 462.94xxx,
+  ...
+  "entryType": "resouce",
+  "initiatorType": "img",
+  "name": "https://cn.xx.com/xx.png",
+  ...
+  "workerStart": 0
+}
 ```
