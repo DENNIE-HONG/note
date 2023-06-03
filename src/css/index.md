@@ -228,13 +228,7 @@ css3新增层叠上下文：
                     ————————————————
 ```    
 
-## word-break
-控制单词如何拆分换行
-* keep-all："单词"一律不拆分换行，只有空格触发自行换行；
-* break-all: 碰到边界一律换行，强行拆分；
 
-### word-wrap
-* break-word: 只有当一个单词整行都显示不下时才拆分换行；
 
 
 ## 小技巧
@@ -345,5 +339,109 @@ a[href^="mailto:"] {
 }
 a[href$=".pdf"] {
   ...
+}
+```
+
+### word-break
+控制单词如何拆分换行
+* keep-all："单词"一律不拆分换行，只有空格触发自行换行；
+* break-all: 碰到边界一律换行，强行拆分；
+
+#### word-wrap
+* break-word: 只有当一个单词整行都显示不下时才拆分换行；
+
+### 说说你了解的圣杯布局和双飞翼布局？
+
+```js
+______________________
+|  header             |
+|—————————————————————
+|left|   main   |right|
+|    |          |     |
+|    |          |     |
+|____|__________|_____|
+|       footer        |
+|_____________________|
+```
+
+```html
+<header>header</header>
+<section class="wrapper">
+  <aside>lef</aside>
+  <section>main</section>
+   <aside>right</aside>
+</section>
+<footer>footer</footer>
+```
+
+#### 1.圣杯
+```css
+.wrapper {
+  padding: 0 100px 0 100px;
+  overflow: hidden;
+}
+.main {
+  position: relative;
+  float: left;
+  width: 100%;
+  height: 200px;
+}
+.left {
+  position: relative;
+  float: left;
+  width: 100px;
+  height: 200px;
+  margin-left: -100%;
+  left: -100px;
+}
+.right {
+  position: relative;
+  float: left;
+  width: 100px;
+  height: 200px;
+  right: -100px;
+  margin-left: -100px;
+}
+```
+问题：当main部分宽度 < left部分，发生布局混乱。
+
+#### 2. 双飞翼布局
+为了修复这个问题，中间变了，多层dom
+```html
+<section class="wrapper">
+  <section class="pull-left main">
+    <section class="main-wrap">main
+    </section>
+  </section>
+  <aside class="pull-left left">left</aside>
+  <aside class="pull-left right">
+      right
+  </aside>
+</section>
+```
+```css
+.wrapper {
+  padding: 0;
+  overflow: hidden;
+}
+.pull-left {
+  float: left;
+}
+.main {
+  width: 100%;
+}
+.main-wrap {
+  margin: 0 100px 0 100px;
+  height: 200px;
+}
+.left {
+  width: 100px;
+  height: 200px;
+  margin-left: -100%;
+}
+.right {
+  width: 100px;
+  height: 2000px;
+  margin-left: -100px;
 }
 ```
