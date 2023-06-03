@@ -6,7 +6,7 @@
 4. 不可使用yield命令.不作Generator函数
 5. 没有原型
 
-## 数字
+## 2. 数字
 ### 浮点数运算问题
 例如：0.1 + 0.2 === 0.3 // false
 Number.EPSILON表示浮点运算舍入操作的安全误差范围。
@@ -18,7 +18,7 @@ function withinMarginOfError(left, right) {
 withinMarginOfError(0.1 + 0.2, 0.3); // true
 ```
 
-## 模块
+## 3. 模块
 模块公开API中暴露的属性和方法并不仅是普通的值或者引用的赋值。是内部模块定义中的标识符的实际绑定（几乎类似于**指针**）  
 即使导出一个私有变量是字符串类型。导出的都是这个变量的绑定，模块修改了这个变量，外部导入绑定到新的值。不是复制！！！
 
@@ -42,7 +42,7 @@ hello.bar = 42; // typeError
 ```
 局部导入绑定的只读性限制了无法从导入的绑定修改！
 
-## Symbol
+## 4. Symbol
 #### Symbol.toStringTag
 原型的@@toStringTag符号指定了在[object ---]字符串化时使用的字符串值。
 例如：
@@ -86,3 +86,53 @@ const b = [4, 5, 6];
 b[Symbol.isConcatSpreadable] = false;
 [].concat(a, b); // [1, 2, 3, [4, 5, 6]]
 ```
+
+
+## 5. class
+### es6写的类与es5写的‘类’不同点?
+1. 类的内部所有定义的方法都是不可枚举的！
+```js
+// es6
+Object.keys(Person.prototype); // []
+// es5
+function Person(name) {
+  this.name = name;
+}
+Person.prototype.sayHello = function() {
+  ...
+}
+Object.keys(Person.prototype); //['sayHello']
+```
+
+2. 必须new调用，否则报错
+
+## 6. Set与weakSet
+区别？
+### Set
+* 成员不能重复；
+* 只有健值，无健名，类似数组；
+* 可遍历；
+
+### weekSet
+* 成员都是对象；
+* 成员都是弱引用，随时消失；
+* 不能遍历；
+
+弱引用：
+指不能确保其引用对象不会被垃圾回收器回收的引用。一个对象若被弱引用，则认为是不可访问的，可能在任何时刻被回收。  
+例如：
+```js
+let map = new Map(); 
+let key = new Array(5 * 1024 * 1024);
+map.set(key, 1); // 强引用
+key = null; // 不会导致key引用对象被回收
+// 需要这样才回收
+map.delete(key);
+key = null;
+// 当
+map = new WeakMap();
+...
+// 下次回收执行时，该引用对象会被回收
+key = null;
+```
+一旦不再需要，WeakMap里的健名对象和健值会自动消失，不用手动删除引用。故WeakMap内部成员取决于垃圾回收机制有没有运行，故不可遍历。

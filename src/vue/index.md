@@ -555,3 +555,78 @@ class Router {
   }
 }
 ```
+
+
+## 7. 组件通信
+1. props：
+子组件显示定义好从父组件接收的数据，父组件通过v-bind传递数据；  
+不可直接改变子组件中的prop属性（单向传递）
+2. v-on、$emit：
+父组件可在使用子组件模板用v-on来监听子组件触发的事件；
+3. v-model：
+父子组件的双向绑定；
+4. sync：
+语法糖，扩展为一个自动更新父组件属性的v-on侦听器。
+```vue
+<demo :foo.sync="something"></demo>
+<demo :foo="something" @update:foo="val => something = val"></demo>
+
+```
+子组件更新：
+```js
+this.$emit('update:foo', newValue);
+```
+
+5. $attrs/$listeners:
+简单的深层次数据传递。  
+子组件：inheritAttrs: false(取消继承属性)
+即父组件多传的props不会绑定在子组件根元素上，但可通过$attr接收父组件传入而子组件没在props显示接收的数据。
+```vue
+<demo :first="firstMsg" :second="secondMsg"></demo>
+```
+```js
+// 子组件
+props: ['first'], inheritAttrs: false
+```
+父 -> 子 -> 孙子
+```js
+// 子组件
+<next-demo v-bind="$attrs"></next-demo>
+```
+孙子 -> 子 -> 父
+```js
+// 子
+<next-demo v-on="$listeners"></next-demo>
+```
+$listeners整体接收监听事件，并传递到孙子组件中；
+```js
+// 孙子组件
+<p @click="$listeners.changeData('change')"></p>
+```  
+
+  
+
+6. 平级组件通信: 通过额外的实例进行简单的中央事件处理。
+```js
+// bus.js
+import Vue from 'vue';
+export default new Vue();
+```
+同级子组件A
+```js
+import Bus from './bus.js';
+methods: {
+  handleClick() {
+    Bus.$emit('fromFirst', '来自A组件');
+  }
+}
+```
+同级子组件B
+```JS
+import Bus from './bus.js';
+create() {
+  Bus.$on('fromFirst', (Amsg) => {
+    this.Bmsg = Amsg;
+  });
+}
+```
