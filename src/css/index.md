@@ -140,6 +140,33 @@ div {
 单冒号用于css伪类；
 双冒号用于css伪元素；
 
+### 伪元素与伪类的区别？
+**伪元素**是对元素中特定内容进行操作。选取某些内容前面or后面这种普通选择器无法完成的工作。本身只是基于元素的抽象，并不存在于文档中。
+例如：
+* ::before(元素内容之前插入额外生成的内容)
+* ::after
+* ::first-letter(首个字符)
+* ::first-line(元素的第一行)
+* ::selection
+* ::grammar-error
+
+**伪类**：一个元素特定状态改变时可能得到or失去某个样式功能，和class有些类似。
+* :target
+* :link
+* :hover
+* :active
+* :visited
+* :focus
+* :not
+* :lang
+* :enabled
+* :checked
+* :empty
+
+
+
+
+
 
 ## 流体布局
 块级元素：

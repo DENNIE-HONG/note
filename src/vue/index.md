@@ -479,3 +479,79 @@ function genElement(el, state) {
   return node;
 }
 ```
+
+
+## 6. spa路由系统
+### hash路由
+利用url的hash，hash值改变不会引起页面刷新，当url的hash改变，触发hashchange回调函数。
+```js
+// 伪代码
+class Router {
+  construtor() {
+    this.routers = {};
+    this.currentUrl = '';
+  }
+  route(path, callback) {
+    this.routes[path] = callback || function () {};
+  }
+  updateView() {
+    this.currentUrl = location.hash.slice(1) || '/';
+    this.routes[this.currentUrl] && this.routes[this.currentUrl](); 
+
+  }
+
+  init() {
+    window.addEventListener('load', this.updateView.bind(this), false);
+    window.addEventListener('hashchange', this.updateView.bind(this), false);
+  }
+}
+// 调用
+const router = new Router();
+router.init();
+router.route('/id', () => {});
+```
+
+### History路由
+罗列出所有可触发history改变的情况，并且将这些方式一一拦截，监听history变化。
+url改变：
+* 点击a标签
+* history.push(replace)State函数
+
+```js
+class Router {
+  constructor() {
+    this.routes = [];
+    this.currentUrl = '';
+  }
+  route(path, callback) {
+    ...
+  }
+  updateView(url) {
+    this.currentUrl = url;
+    this.routes[url] && this.routes[url]();
+  }
+
+  bindLink() {
+    const allLink = document.querySelectorAll('a[data-href]');
+    for (let i = 0; i < allLink.length; i++) {
+      const current = allLink[i];
+      current.addEventListener('click', e => {
+        e.preventDefault();
+        const url = current.getAttriute('data-href');
+        history.pushState({}, null, url);
+        this.updateView(url);
+      }, false);
+    }
+  }
+
+  init() {
+    this.bindLink();
+    window.addEventListener('popstate', (e) => {
+      this.updateView(window.location.pathname);
+    });
+    window.addEventListener('load', () => {
+      this.updateView('/');
+    }, false);
+  }
+}
+```
