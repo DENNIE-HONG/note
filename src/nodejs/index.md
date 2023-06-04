@@ -291,6 +291,39 @@ co.wrap = function (fn) {
 }
 ```
 ### co
+简单来说co，就是把generator自动执行，再返回一个promise。 generator函数这玩意它不自动执行呀，还要一步步调用next()，也就是叫它走一步才走一步。
+```js
+// 多个yeild，传参情况
+function* generatorFunc(suffix = ''){
+  const res = yield request();
+  console.log(res, 'generatorFunc-res' + suffix);
+
+  const res2 = yield request();
+  console.log(res2, 'generatorFunc-res-2' + suffix);
+}
+```
+简单版：
+```js
+function coSimple(gen){
+  const ctx = this;
+  const args = Array.prototype.slice.call(arguments, 1);
+  gen = gen.apply(ctx, args);
+  console.log(gen, 'gen');
+
+  const ret = gen.next();
+  const promise = ret.value;
+  promise.then(res => {
+    const ret = gen.next(res);
+    const promise = ret.value;
+      promise.then(res => {
+        gen.next(res);
+      });
+  });
+}
+
+coSimple(generatorFunc, ' 哎呀，我真的是后缀')
+```
+
 ```js
 function co(gen) {
   var ctx = this;
