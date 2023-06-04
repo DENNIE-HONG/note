@@ -164,6 +164,136 @@ Expries是http1.0内容，使用服务端时间，如果客户端与服务端时
 
 
 
+### 离线缓存
+ServiceWorker本质上充当web应用程序与浏览器之间的代理服务器，旨在创建有效的离线体验，拦截网络请求并基于网络是否可用、资源是否驻留来采取适当动作。  
+本质：web worker,独立于js引擎线程，不直接访问DOM、Window对象，可访问navigator对象，有自身生命周期。  
+需要在js主代码中使用以下来安装。
+```js
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').then(function(registration) {
+    // 成功，installed
+    console.log('成功安装', registration.scope);
+  }).catch(function(err) {
+    // 失败，redundant状态
+    console.log(err);
+  })
+}
+```
+### 文件路径
+当前域根目录下，即和网站是同源，能代理http://xx.com下网络请求。
+
+### 生命周期
+1. 下载
+2. 安装
+3. 激活
+
+```js
+
+                         生命周期
+
+      __________________________失败_________________________________________
+     |                                                                      |
+ ____|______    _________     __________     _________                   ___↓_____
+|installing|——>|installed|——>|activating|——>|activated|——被新sw.js代替——>|redundant|
+|          |   |(waiting)|    ——————————     —————————                   ——————————
+ ——————————     —————————         |               |                          
+     |              |             ----激活过程-----
+     -----安装过程---
+
+```
+### sw.js
+#### 安装过程
+```js
+self.addEventListener('install', function(event) {
+  console.log('callback 1:' + (Date.now()/1000));
+  // 回调里有event.waitUntil(promise1), 则promise1被resolved时
+  // sw对象才被installed，如果被reject则sw安装失败，回到redundant
+  event.waitUntil(new Promise(function(resolve) {
+    setTimeout(() => {
+      console.log('resolve 2s');
+      resolve();
+    }, 2000);
+  }));
+  event.waitUntil(new Promise((function (resolve) {
+    // 事件对象被处理完前serviceWorker不会进入下一个状态(installed或redundant)
+    setTimeout(() => {
+      console.log('resolve 3s');
+      resolve();
+    }, 3000);
+  })))
+});
+// install callback1: 1542173
+// sw state is installing
+// resolve 2s
+// resolve 3s
+// sw state is installed
+// sw state is activating
+// sw state is activated
+```
+可以有多个回调事件，即多个self.addEventListener('install', function(event) {})里可以有多次调用event.waitUntil(promise)方法。  
+所有的promise都被resolved时，sw对象才被installed，只要存在被reject则安装失败（redundant）.
+
+#### 安装成功
+安装成功便进入installed，等待进入激活过程。
+进入activating状态，触发activate事件。
+```js
+self.addEventListener('activate', function(event) {
+  event._form = "callback 1";
+  console.log('activate callbac1:' + (Date.now()/1000));
+  // 回调里调用event.waitUntil(promise1)方法，promise1 
+  //被resolve/reject时，sw对象才进入下一个状态activated
+  // 与install回调不同的是，reject状态不影响
+  // ServiceWorker进入activated状态
+  event.waitUntil(new Promise(function(resolve, reject) {
+    setTimeout(() => {
+      console.log('resolve 2s');
+      resolve();
+    }, 2000);
+  }))
+})
+```
+
+#### activated
+serviceWorker控制页面，可监听功能事件(fetch)  
+fetch事件：
+1. 多个fetch事件，回调的fetchEvent是同一个对象；
+```js
+self.addEventListener('fetch', function(event) {
+  // 不可多次调用，最好同步方式写
+  event.responsedWith(
+    caches.match(event.request)
+    .then(function(reponse) {
+      if (response) {
+        // 缓存命中
+        return response;
+      }
+      return fetch(event.request);
+    });
+  )
+})
+``` 
+2. 成功回调了fetchEvent.responsedWith方法，后面回调不执行；
+3. 回调不可多次调用responsedWith，即一个request一个response;
+4. 最好是同步方式调用fetchEvent.responsedWith，异步不会阻止后面的回调，造成多个response；
+5. 如果没有调用responsedWith，则采用浏览器默认fetch事件回调函数处理，即走网络请求。
+
+
+#### redundant
+是ServiceWorker的终态。
+进入终态情况：
+1. register失败，多次调用register，后注册的sw变成redundant;
+2. 安装失败；
+3. 被新版ServiceWorker变成redundant状态；
+
+
+
+
+
+
+
+
+
+
 # 5.HTTPS
 超文本传输安全协议。经由HTTP进行通信，但利用SSL/TLS来加密数据包，提供对网站服务器的身份认证，保护数据的隐私与完整性。  
 **TLS/SSL**: 依赖散列函数、对称加密和非对称加密。  

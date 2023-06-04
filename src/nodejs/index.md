@@ -36,7 +36,16 @@ Master-Workder模式（主从）：主进程负责调度与管理，工作进程
 └──┤    close callbacks    │比如 socket.on(‘close’, callback) 的callback会在这个阶段执行
    └───────────────────────┘
 ```
-例如：
+event loop的每一次循环都需要经过6个阶段。每个阶段有自己的callback队列，每当进入某个阶段，都会从所属队列中取出callback执行。当队列为空或者执行callback数量达系统最大数量时，进入下一个阶段。这6个阶段都执行完称为一轮循环。  
+各个阶段切换的中间执行微任务。当执行栈里的同步代码执行完毕切换到node的event loop时，也属于阶段切换，也先去清空微任务。
+
+
+
+例如：setImmediate与setTimeout
+* setTimeout：poll阶段空闲 && 没定时间到达，在timers阶段执行；  
+* setImmediate: poll阶段完成，check阶段；
+
+
 ```js
 const fs = require('fs');
 fs.readFile(_filename, () => {
@@ -49,8 +58,47 @@ fs.readFile(_filename, () => {
 });
 // 输出immediate timeout  
 ```
+1. 在异步I/O callback之外调用，执行先后顺序不定！！！
+2. 在异步I/O callback内部调用，先执行setImmediate后setTimeout
 
 readFile回调在poll中进行，发现有setimmedate, 跳到check阶段执行回调，再去timer阶段执行setTimeout
+
+栗子：
+```js
+console.log(1);
+console.log(2);
+setTimeout(function() {
+  console.log('setTimeout1');
+  Promise.resolve().then(function() {
+    console.log('promise');
+  });
+});
+setTimeout(() => {
+  console.log('setTimeout2');
+});
+// 1
+// 2
+// setTimeout1
+// setTimeout2
+// promise
+```
+1. 先执行完栈里的代码。
+2. 从栈进入到event loop的timer阶段，由于nodejs的event loop是每个阶段的callback执行完毕才进入下一个阶段，所以会打出timers的2个settimeout回调；
+3. 微任务不在event loop任何阶段，而是在各个阶段切换的中间执行。即从一个阶段切换到下一个阶段前执行。timers阶段callback执行完，执行微任务。
+
+
+再举个栗子：
+```js
+
+```
+
+
+
+
+
+
+
+
 
 ## 5. 模块机制
 * 模块引用：require()
