@@ -52,6 +52,78 @@ v8主要用标记清除，空间不足时才使用标记整理。
 3. 使用翻译器，将代码转为字节码
 4. 使用字节码解释器，将字节码转成机器码
 
+### 词法分析
+逐个扫描输入字符，转换为词法单元（Token）序列，传递给语法分析器进行语法分析。
+Token: 
+* 关键字
+* 标识符
+* 操作符
+* 标点符号
+
+### 语法分析
+产生式：
+```js
+产生式头         产生式体
+  ↓               ↓
+func  -> function  id (params)  {block} 
+            |       |_____|_______|     
+         终结符号           非终结符号
+         (token)
+```
+扫描来自词法分析器产生的Token序列，根据文法和终点类型定义构造出一棵AST(抽象语法树)。
+**文法**：构造规则
+* 终结符号token
+* 一组非终结符号
+* 一组产生式
+* 一个开始符号
+
+**推导**：
+不断替换文法产生式体的非终结符号直到全换转换。
+分为最左推导和最右推导。
+工作方式分：
+* 自顶向下分析法(最左推导 => AST)
+* 自底向上分析法（最右推导 => AST）
+
+例如：var foo = "bar";
+Token序列：
+* Token('var')
+* Token('foo')
+* Token('=')
+* Token('"bar"')
+* Token(';')
+
+1. 根据FIRST集合（首个token集合），决定用哪种产生式展开。
+2. 变量声明语句，顶层结点Variablke Declaration
+Token('var') 加入结点属性中。
+3. 根据产生式非终结符号左至右顺序，递归下降分析，生成AST.
+
+```js
+              ____________
+             |Variable    |
+             |Declaration |
+              ————————————
+                    |
+               __________
+              | Variable |
+              |Declarator|
+               ——————————
+               /        \
+      _________       _______      
+     |identifer|     |String |
+      —————————      |Literal| 
+       foo            ———————
+                        "bar"
+
+```
+
+
+
+
+
+
+
+
+
 ## 结构
 ```js
 call stack （空间小） memory heep（大）
@@ -289,8 +361,58 @@ async脚本：后台加载脚本，文档解析不中断，加载后文档停止
 * kMainfest
 * 等等
 
+### 安全策略检查
+网页安全策略，比如限制非信任域名脚本的加载预防XSS攻击。
+#### 1. 配置http请求头
+Content-Security-Policy字段
+#### 2. meta
+```html
+<meta http-equiv="Content-Security-Policy" content="script-src 'self'; style-src nos.netease.com xx.com">
+```
+即脚本资源只信任本域下的，样式资源除了本域还可以信任nos.netease.com和xx.com
 
+```html
+<meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" >
+```
+所有http升级到https
 
+```html
+<meta http-equiv="Conent-Security-Policy" content="block-all-mixed-content">
+```
+
+### 默认优先级规则
+网络层优先级：Highest、Medium、Low、Lowest、idle  
+控制台显示：Highest、high、Medium、Low、Lowest  
+
+html、css、font > preload、script、xhr请求 > 图片、语音、视频 > prefetch
+
+根据实际，对优先级调整：
+1. 同步的xhr请求 -> 最高，
+2. 图片默认Low, 如果出现在首屏，将视口可见图片 -> high
+3. defer/async脚本 -> Low
+  脚本在第一张图片之前 -> high
+  脚本在第一张图片之后 -> medium
+
+### 关键请求链
+可视区域渲染完毕，必须加载的资源请求队列。  
+优化关键请求链：
+1. 利用preload和prefetch  
+  
+```js
+// 资源预加载：
+<link rel="prefetch" href="test.css" />
+// DNS预解析
+<link rel="dns-prefetch" href="//xx.com" />
+// http预连接,将建立对该域名的TCP连接
+<link rel="prefetch" href="//www.xx.com" />
+// 页面预渲染,预先加载链接文档的所有资源
+<link rel="prerender" href="//m.xx.com" />
+```
+
+#### preload与prefetch区别？  
+* preload：告诉浏览器当前页需要的资源，提高资源请求优先级；
+* prefetch:  
+用户将来可能在其他页（非本页）可能用的资源，浏览器空闲时预加载放在http缓存里（比如dns-prefetch）,prefetch会把资源优先级 ——> 最低。
 
 
 
