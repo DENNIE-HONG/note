@@ -105,6 +105,12 @@ setTimeout(() => {
 * 模块定义：exports是module的属性，导出方法or变量
 * 模块标识：传给require的参数，小驼峰命名or路径
 
+### Nodejs模块类型
+* 核心模块：包含在Node.js源码中，可执行二进制文件js模块，native模块，如https,fs...;
+* c/c++模块：built-in模块；
+* native模块：如buffer、fs、os，底层都有调用built-in模块；
+* 第三方模块：如express等；
+
 nodejs会缓存引入模块，且是编译和执行之后的对象。  
 文件模块：
 ```js
@@ -121,6 +127,64 @@ function Module(id, parent) {
 }
 ```
 编译成功的模块：文件路径缓存在Module._cache
+
+### require？
+require定义在Module的原型链上。
+```js
+Module.prototype.require = function(path) {
+  ...
+  return Module._load(path, this, false);
+}
+```
+Module._load(request, parent, isMain):
+1. 根据文件名，调用Module._resolveFilename解析文件路径；
+2. 查看缓存Module._cache中是否有该模块，如果有，直接返回；
+3. 通过NativeModule.noInternalExists判断是否为核心模块，是 ->NativeModule.require;
+4. 不是核心，新对象Module -> tryModuleLoad()
+
+#### 核心模块加载原理
+NativeModule.require:
+1. cache中是否有，有返回；
+2. 新建nativeModule对象，缓存加载编译compile
+```js
+NativeModule.wrap = function (script) {
+  return NativeModule.wrapper[0] + script + NativeModule.wrapper[1];
+};
+NativeModule.wrapper = [
+  '(function (exports, require, module, _filename, _dirname) {',
+  '\n});'
+];
+
+NativeModule.prototype.compile = function() {
+  var source = NativeModule.getSource(this.id);
+  source = NativeModule.wrap(source);
+  this.loading = true;
+  try {
+    const fn = runInThisContext(source, {
+      filename: this.filename,
+      lineOffset: 0,
+      displayError: true
+    });
+    fn(this.exports, NativeModule.require, this, this.filename);
+    this.loaded = true;
+  } finally  {
+    this.loading = false;
+  }
+}
+
+```
+
+#### 第三方模块加载原理
+tryModuleLoad() -> Module.prototype.load();  
+检测filename扩展名，针对不同扩展名调用不同Module。  
+_extensions方法来加载、编译模块。  
+Module._extensions: 
+* js: fs读取 -> module._compile
+* json: 读取 -> JSON.parse
+* node: process.dlopen
+
+
+
 
 ## 6. 异步I/O
 优势：第一个资源请求不会阻塞第2个。消耗时间为Max(m,n, ...), 特别是分布式服务器，而不是sum(m, n, ...).  
