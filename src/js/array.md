@@ -21,6 +21,37 @@ console.log(a); // [1, 2, 3, 4]
 ### map
 返回新数组
 
+<font color="red">1.循环实现数组map方法：</font>
+
+```js
+const selfMap = function(fn, context) {
+  let arr = Array.prototype.slice.call(this);
+  let mappedArr = Array();
+  for (let i = 0; i < arr.length; i++) {
+    // 判断稀疏数组情况
+    if (!arr.hasOwnProperty(i)) {
+      continue;
+    }
+    mappedArr[i] = fn.call(context, arr[i], i, this);
+  }
+  return mapperArr;
+}
+Array.prototype.selfMap = selfMap;
+```
+
+<font color="red">2.使用reduce实现数组map方法：</font>
+
+```js
+const selfMap2 = function(fn, context) {
+  let arr = Array.prototype.slice.call(this);
+  return arr.reduce((pre, cur, index) => {
+    return [...pre, fn.call(context, cur, index, this)];
+  }, []);
+}
+```
+
+
+
 ### push
 push原理例子
 ```js
@@ -36,6 +67,35 @@ Array.prototype.push = function(target) {
 // obj[2] = c, length = 3
 // {"1": 'a', "2": 'c', length: 3}
 ```
+
+### reduce
+
+<font color="red">循环实现数组的reduce方法：</font>
+
+```js
+Array.prototype.selfReduce = function(fn, initialValue) {
+  let arr = Array.prototype.slice.call(this);
+  let res;
+  let startIndex;
+  if (initialValue === undefined) {
+    // 找到第一个非空单元的元素和下标
+    for (let i = 0; i < arr.length; i++) {
+      if (!arr.hasOwnProperty(i)) continue;
+      startIndex = i;
+      res = arr[i];
+      break;
+    }
+  } else {
+    res = initialValue;
+  }
+  for (let i = ++startIndex || 0; i < arr.length; i++) {
+    if (!arr.hasOwnProperty(i)) continue;
+    res = fn.call(null, res, arr[i], i , this);
+  }
+  return res;
+}
+```
+
 
 ### for of
 循环可通过break、continue、return 提前终止。
