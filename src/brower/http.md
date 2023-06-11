@@ -40,6 +40,7 @@ Server: Apache/2
 
 ## 2. 双向通信
 ### 2.1 webSocket
+双向、按时到达的数据流。
 允许服务器主动发送信息给客户端，双向数据流协议
 与http是两码事。
 * 传统TCP socket：标准化的API
@@ -63,8 +64,23 @@ socket.onmessage = function(event) {
 ```
 websocket握手：通过HTTP发起请求报文
 协议头区别：
+从客户端到服务器：
+* GET /chat HTTP/1.1
+* Connection: Upgrade
+* Upgrade: websocket
+* Sec-WebSocket-key:xxxx
+* Sec-WebSocket-Version: 13
+
+从服务器到客户端：
+* HTTP/1.1 101 WebSocket Protocol HandShake
 * Upgrade: websocket
 * Connection: Upgrade
+* Sec-WebSocket-Accept:xxxx
+
+
+
+
+
 
 
 ### 2.2 轮询

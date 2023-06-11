@@ -79,7 +79,9 @@ el.getAttribute('href') === '#tag'; // 特性原样返回
 el.href === 'http://xxx#tag'; // 属性返回解析后完整url
 ```
 
-## DOM事件流
+## 7. DOM事件流
+***
+
 事件流包括：事件捕获阶段、处于目标阶段、事件冒泡阶段
 事件从文档的根节点出发，随着DOM树结构向事件目标点流去。经过各个层级DOM节点，触发捕获事件，直到到达目标节点。然后进入目标阶段，事件在目标节点上被触发，然后随着DOM树向上冒泡，直到根节点。
 
@@ -116,3 +118,86 @@ el.href === 'http://xxx#tag'; // 属性返回解析后完整url
 ```
 
 
+
+
+## 8. Forms API
+
+***
+### spellcheck
+带有文本内容输入控件和textarea控件设置spellcheck，即拼写检查结果反馈，拼写不匹配文本有红色虚线，大部分浏览器默认启用。
+```html
+<textarea spellcheck="true">
+```
+
+### <font color="red">list和datalist元素</font>
+
+输入型控件构造一张选值列表。
+举个栗子：
+```html
+<input type="email" id="contacts" list="contactList" />
+<dataList id="contactList">
+   <option value="x@example.com" label="RacerX">
+   <option value="peter@example.com" label="Peter">
+</dataList>
+```
+ 
+### validityState对象
+表单验证：ValidityState对象
+```js
+// 获取名为myInput表单元素的validityState对象
+// 有8种约束条件，均通过则valCheck.valid 返回true
+var valCheck = document.myForm.myInput.validity;
+
+```
+* valueMissing: 有required，输入为空返回true；
+* typeMissing：输入不符合对应类型规则返回true；
+* patternMismatch：设定正则表达式验证机制，不符合true；
+* tooLong：超过设置maxLength, true;
+* rangeUnderflow: 数值 < 下限，true;
+* rangeOverflow: 数值 > 上限，true；
+* stepMismatch：符合最小值与step倍数之和；
+* customError: 自定义验证消息，消除错误：setCustomValidity("");
+
+#### 验证反馈
+所有未通过验证的表单都会接收到一个invalid事件，例如：
+```js
+function invalidHandler(evt) {
+   var validity = evt.srcElement.validity;
+   if (validity.valueMissing) {
+      // 提示用户必填项
+      // 可取消浏览器默认的验证反馈evt.preventDefault();
+   }
+}
+myField.addEventListener('invalid', invalidHandler, false);
+```
+关闭验证：
+```html
+<input type="submit" formnovalidate name="save" value="保存">
+```
+
+例子：密码确认
+利用customerError可用来处理表单控件的错误
+
+```html
+<form name="passwordChange">
+   <p>
+      <label for="password1">New Password:</label>
+      <input type="password" id="password1" onchange="checkPasswords()" />
+   </p>
+   <p>
+      <label for="password2">Confirm Password:</label>
+      <input type="password" id="password2" onchange="checkPasswords()" />
+   </p>
+</form>
+```
+```js
+function checkPasswords() {
+   var pass1 = document.getElementById("password1");
+   var pass2 = document.getElementById("password2");
+   if (pass1.value !== pass2.value) {
+      pass1.setCustomValidity("Your passwords do not match");
+   } else {
+      pass1.setCustomValidity("");
+   }
+}
+```

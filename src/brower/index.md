@@ -610,7 +610,15 @@ proxy('http://domain2.com/b.html', function(data) {
   };
   // 接收domain2返回数据
   window.addEventListener('message', function(e) {
-    console.log(e.data);
+    switch(e.origin) {
+      case 'domain1.com':
+         console.log(e.data);
+         break;
+      default:
+        // 消息来源无法识别，忽略
+        break;
+    }
+  
   }, false);
 </script>
 ```
