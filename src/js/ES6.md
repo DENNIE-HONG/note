@@ -138,3 +138,23 @@ map = new WeakMap();
 key = null;
 ```
 一旦不再需要，WeakMap里的健名对象和健值会自动消失，不用手动删除引用。故WeakMap内部成员取决于垃圾回收机制有没有运行，故不可遍历。
+
+
+## 7. 模板字面量
+使用标记的字符串模板，第一个参数的值始终是字符串值数组，其余参数获取传递到模板字符串中的表达式值。
+
+例如：
+```js
+function getPersonInfo(one, two, three) {
+  console.log(one);
+  console.log(two); 
+  console.log(three);
+}
+
+const person = "Lydin";
+const age = 21;
+getPersonInfo`${person} is ${age} years old`;
+// ["", "is", "", "years old"]
+// Lydin
+// 21
+```
