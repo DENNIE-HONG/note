@@ -227,6 +227,20 @@ session是一种服务机制，类似散列表结构存储用户数据。
 浏览器第一次向客户端发送请求时，服务器自动生成一个session和sessionid，sessionid唯一标识这个session。  
 服务器响应时把sessionid发送给浏览器。浏览器第2次向服务器发送请求时携带这个sessionid。服务器通过id找到对应的session获取用户数据。
 
+
+### 分布式Session问题
+Q：多台服务器共同来支撑前端用户请求，用户在A台服务器登录了，第二次请求跑到服务B出现登录失败？
+
+A: 
+1. Nginx ip_hash策略。每个请求按访问ip的hash分配，同一个ip固定访问同一台机器。  
+2. Session复制，任何一个服务器上的Session发生改变，该节点会把这个Session所有内容序列化，广播给其他节点。
+3. 共享Session。服务器无状态，将用户的Session等信息使用缓存中间件来统一管理，保障分发到每一台服务器的响应结果都一致。
+
+
+
+
+
+
 ## sessionStorage/localStorage/cookie区别？
 1. 都会在浏览器保存，有大小限制，同源限制；
 2. cookie在请求时发送到服务器，作为会话标识，服务器可修改cookie，webstorage不会发送到服务器；

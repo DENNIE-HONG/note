@@ -41,7 +41,7 @@ o(n^2)，类似打扑克牌排大小
 function insertionSort(arr) {
   for (let i = 1; i < arr.length; i++) {
     const element = arr[i];
-    for (var j = i - 1; j >= 0; j--) {
+    for (let j = i - 1; j >= 0; j--) {
       const tmp = arr[j];
       if (tmp > element) {
         arr[j + 1] = tmp;
@@ -190,3 +190,285 @@ function shuffles(arr) {
   return arr;
 }
 ```
+
+
+## 3. 遍历
+
+### 广度优先遍历
+Q: 期望给出广度优先遍历(BFS), 遍历每个节点，打印出节点的类型和类名。
+
+```html
+<div class="root">
+  <div class="container">
+    <section class="sidebar">
+      <ul class="menu"></ul>
+    </section>
+    <section class="main">
+      <article class="post"></article>
+      <p class="copyright"></p>
+    </section>
+  </div>
+</div>
+```
+
+A: 使用队列管理遍历节点。
+```js
+
+const printInfo = (node) => {
+  console.log(node.tagName, `${node.className}`);
+}
+const traverse = (ndRoot) => {
+  const queue = [ndRoot];
+  while (queue.length) {
+    const node = queue.shift();
+    prinInfo(node);
+    if (!node.children.length) {
+      continue;
+    }
+    Array.from(node.chilren)
+    .forEach(x=> queue.push(x));
+  }
+}
+// 调用
+traverse(document.querySelector('.root'));
+
+```
+
+### 广度优先搜索
+breadth-first search BFS
+例如：解决最短路径问题的算法称为广度优先搜索。
+使用图来建立模型。  
+解决2类问题：
+1. 节点A出发，有到B的路径吗？
+2. 节点A出发，到B,那条路径最短？
+
+要求：按顺序添加，才能保证知道的是最短路径。 
+
+
+栗子：在你的人际关系网中有芒果经销商吗？
+```js
+    anuj            daire ——> thom
+     ^              ^ \
+      \            /   ↓
+      Bob <———— you    jonny
+      ↓         ↓
+     peggy <—— alice
+    
+    
+// 利用散列表表示图
+const graphy = {};
+graph["you"] = ["alice", "Bob", "daire"];
+graph.bob = ["anuj", "peggy"];
+graph.alice = ["peggy"];
+...
+```
+算法思路：
+1. 创建队列，用于存储要检查的人；
+2. 队列中弹出一人；
+3. 检查这个人是否是芒果经销商；
+4. 是：成功；否：将这个人的所有邻居加入队列；
+5. 回到第二步；
+6. 队列Wie空，你的人际关系中无经销商；
+
+```js
+function search(name) {
+  const search_queue = [];
+  search_queue.push(...graph[name]);
+  const searched = [];
+  while (search_quene.length) {
+    const person = search_queue.shift();
+    if (!searched.includes(person)) {
+      if (person_is_searller(person)) {
+        return true;
+      }
+      else {
+        search_queue.concat(graph[person]);
+        searched.push(person);
+      }
+    }
+  }
+  return false;
+}
+```
+运行时间：O(人数 + 边数量)
+
+
+
+
+## 4. 二叉树
+二叉树查找：相对较小的值保存在左节点，较大的值保存在右边节点。
+
+定义节点: 
+```js
+function Node(data, left, right) {
+  this.left = left;
+  this.right = right;
+  this.data = data;
+  this.show = () => this.data;
+}
+
+
+```
+
+### 4.1 二叉树的插入
+```js
+function insert(data) {
+  let node = new Node(data, null, null);
+  if (this.root === null) {
+    this.root = node;
+  } else {
+    let current = this.root;
+    let parent;
+    while(true) {
+      parent = current;
+      if (data < current.data) {
+        current = current.left;
+        if (current === null) {
+          parent.left = node;
+          break;
+        }
+      } else {
+        current = current.right;
+        if (current === null) {
+          parent.right = node;
+          break;
+        }
+      }    
+    }
+  }
+}
+
+function BST () {
+  this.root = null;
+  this.insert = insert;
+}
+```
+
+### 4.2 二叉树的遍历
+* 前序遍历（根左右）：最后一个最大，第一个是root；
+* 中序遍历（左根右）：从小到大；
+* 后序遍历（左右根）：根节点在最后；
+
+例如：
+```js
+              56
+            /    \
+           22     81
+          /  \   /  \
+         10  30 77   92
+
+```
+前序遍历：56 22 10 30 81 77 92
+中序遍历：10 22 30 56 77 81 92
+后序遍历：10 30 22 77 92 81 56
+
+
+```js
+// 中序遍历
+function inOrder(node) {
+  if (node !== null) {
+    inOrder(node.left);
+    console.log(node.show());
+    inOrder(node.right);
+  }
+}
+// 前序遍历
+function preOrder(node) {
+  if (node !== null) {
+    console.log(node.show());
+    preOrder(node.left);
+    preOrder(node.right);
+  }
+}
+```
+
+### 4.3 二叉树查找
+最小值
+```js
+function getMin(bst) {
+  let current = bst.root;
+  while (current.left !== null) {
+    current = current.left;
+  }
+  return current.data;
+}
+```
+最大值
+```js
+function getMax(bst) {
+  let current = bst.root;
+  while (current.right !== null) {
+    current = current.right;
+  }
+  return current.data;
+}
+```
+
+```js
+function find(target, bst) {
+  let current = bst.root;
+  while (current !== null) {
+    if (target === current.data) {
+      return true;
+    } else if (target > current.data) {
+      current = current.right;
+    } else if (target < current.data) {
+      current = current.data;
+    }
+  }
+  return -1;
+}
+```
+
+### 4.4 红黑树
+
+二叉查找树缺陷：
+```js
+                         9
+                        / \
+                       8   12
+                      /
+                     7
+                    /
+                   6
+                  /
+                 5
+                /
+               4  
+```
+查找性能大打折扣。
+解决：因为二叉查找树多次插入新节点而导致不平衡，用红黑树。
+
+```js
+                     黑13
+                    /   \
+                  红8    红17
+                /   \    /   \
+               黑1  黑11 黑15 黑25
+             /   \  / \  / \  /  \
+          NIL    6 NIL N N N 红22 红27
+                /  \        / \   / \
+                NIL NIL    NIL N N   N
+```    
+
+红黑树特性：
+1. 节点红or黑；
+2. 根节点是黑；
+3. 每个叶子节点都是黑色的空节点（NIL节点）
+4. 每个红节点的2个子节点都是黑色；
+5. 从任一节点到其每个叶子的所路径都包含相同数目的黑色节点；
+
+红黑树从根到叶子的最长路径不会超过最短路径的2倍。  
+插入新节点需调整：  
+* 变色
+* 旋转
+    * 左旋转
+    * 右旋转
+
+
+## 5. 分而治之
+思路：
+1. 找出简单的基线条件；
+2. 确定如何缩小问题的规范，使其符合基线条件；
+
+栗子：快速排序
