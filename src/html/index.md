@@ -203,7 +203,7 @@ function checkPasswords() {
 ```
 
 ## 9. web storage
-## localStorage
+### localStorage
 基于LocalStorage设计一个1M的缓存系统，实现缓存淘汰机制？  
 思路：
 1. 过期时间  
@@ -273,20 +273,8 @@ class Store {
 }
 ```
 
-## cookie
-http的无状态：
-服务端对于客户端每次发送的请求都认为它是一个新请求，上一次会话和下一次会话没有联系。  
-cookie机制：  
-客户端请求服务器时，如果服务器需要记录该用户状态，就使用response向client种cookie。当浏览器再请求服务器时，把cookie发送给服务器。服务器通过检查cookie来获取用户状态。
 
-
-
-cookie优化：  
-客户端在域名A下有cookie,页面依赖很多静态资源，静态资源会默认带上cookie，造成浪费。
-解决：  
-多域名拆分，将静态资源分组，放到不同域名下
-
-## session机制
+### session机制
 session是一种服务机制，类似散列表结构存储用户数据。  
 浏览器第一次向客户端发送请求时，服务器自动生成一个session和sessionid，sessionid唯一标识这个session。  
 服务器响应时把sessionid发送给浏览器。浏览器第2次向服务器发送请求时携带这个sessionid。服务器通过id找到对应的session获取用户数据。
@@ -305,7 +293,7 @@ A:
 
 
 
-## sessionStorage/localStorage/cookie区别？
+### sessionStorage/localStorage/cookie区别？
 1. 都会在浏览器保存，有大小限制，同源限制；
 2. cookie在请求时发送到服务器，作为会话标识，服务器可修改cookie，webstorage不会发送到服务器；
 3. cookie有path概念，子路径可访问父路径cookie，父路径不能访问子；

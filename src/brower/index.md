@@ -139,7 +139,18 @@ call stack （空间小） memory heep（大）
 * local variables：栈中；
 
 
+# 2. cookie
+http的无状态：
+服务端对于客户端每次发送的请求都认为它是一个新请求，上一次会话和下一次会话没有联系。  
+cookie机制：  
+客户端请求服务器时，如果服务器需要记录该用户状态，就使用response向client种cookie。当浏览器再请求服务器时，把cookie发送给服务器。服务器通过检查cookie来获取用户状态。
 
+
+
+cookie优化：  
+客户端在域名A下有cookie,页面依赖很多静态资源，静态资源会默认带上cookie，造成浪费。
+解决：  
+多域名拆分，将静态资源分组，放到不同域名下
 
 
 
