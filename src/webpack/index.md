@@ -36,11 +36,6 @@
 })
 ```
 
-## 原理
-本质上是一种事件机制，工作流程即将各个插件串联起来，通过Tapable。
-* 负责编译：Complier,包含了webpack环境所有配置信息，全局唯一。整个webpack从启动到关闭的生命周期。
-* 负责创建bundles:Compilation，包含了当前模块资源、编译生成资源、变化的文件等。开发模式时，检测到一个文件变化，一个新的compliation被创建。
-
 
 
 ## loader与plugin？
@@ -459,3 +454,113 @@ Tapable用法：
 * 插件注册数量
 * 插件注册类型(sync, async, promise)
 * 调用方式(sync, async, promise)
+
+
+
+
+## 原理
+本质上是一种事件机制，工作流程即将各个插件串联起来，通过Tapable。
+* 负责编译：Complier,包含了webpack环境所有配置信息，全局唯一。整个webpack从启动到关闭的生命周期。
+* 负责创建bundles:Compilation，包含了当前模块资源、编译生成资源、变化的文件等。开发模式时，检测到一个文件变化，一个新的compliation被创建。
+
+### webpack 入口文件
+```js
+const webpack = (options, callback) => {
+    // ...
+    // 验证options正确性
+    // 预处理options
+    options = new WebpackOptionsDefaulter().process(options);
+    compiler = new Compiler(options.context);
+    // 若options.watch === true && callback则开启watch线程
+    compiler.watch(watchOptions, callback);
+    compiler.run(callback);
+    return compiler;
+}
+```
+webpack的编译的钩子调用顺序：
+* before-run 清除缓存；
+* run 注册缓存数据钩子
+* before-compile
+* compile 开始编译
+* make 从入口分析依赖以及间接依赖模块，创建模块对象
+* build-module 模块构建
+* seal 构建结果封装，不可再更改
+* after-compile 完成构建，缓存数据
+* emit 输出到dist目录
+
+
+### 编译构建流程
+伪代码：
+```js
+class Compliation extends Tapable {
+    constructor(compiler) {
+        super();
+        this.hooks = {
+            //
+        };
+        // ...
+        this.compiler = compiler;
+        // template
+        this.mainTemplate = new MainTemplate(this.outputOptions);
+        this.chunkTemplate = new ChunkTemplate(this.outputOptions);
+        ...
+        this.runtimeTemplate = new RuntimeTemplate(this.outputOptions, this.requestShortener);
+        this.moduleTemplates = {
+            javascript: new ModuleTemplate(this.runtimeTemplate),
+            webassanbly: new ModuleTemplate(...)
+        };
+        // 构建生成资源
+        this.chunks = [];
+        this.assets = {};
+        this.modules = [];
+        ...
+    }
+
+    buildModule(module, optional, origin, dependencies, thisCallback) {
+        // 调用module.build方法进行编译代码，利用acorn生成AST
+        this.hooks.buildModule.call(module);
+        module.build(...);
+    }
+    // 将模块添加到列表中，并编译模块
+    _addModuleChain(context, dependency, onModule, callback) {
+        // ...
+        // 创建模块，利用loader处理文件，生成模块对象
+        moduleFactory.create({
+            contextInfo: {
+                issuer: "",
+                compiler: this.compiler.name
+            },
+            context,
+            dependencies: [dependency]
+        }, (err, module) => {
+                const addModuleResult = this.addModule(module);
+                ...
+            }
+        });
+    }
+    // 添加入口模块，开始编译代码&构建
+    addEntry(content, entry, name, callback) {
+        ...
+        this._addModuleChain(context, entry, module => {
+            this.entries.push(module);
+
+            }
+            //...
+        );
+    }
+    // 生成assets资源并保存到Compilation.assets中给webpack
+    // 写插件的时候会用到
+    createModuleAssets() {
+        for (let i = 0; i < this.modules.length; i++) {
+            const module = this.modules[i];
+            if (module.buildInfo.assets) {
+                for(const assetName of Object.keys(module.buildInfo.assets)) {
+                    const fileName = this.getPath(assetName);
+                    this.assets[fileName] = module.buildInfo.assets[assetName];
+                    this.hooks.moduleAsset.call(module, fileName);
+                }
+            }
+        }
+    }
+}
+```
