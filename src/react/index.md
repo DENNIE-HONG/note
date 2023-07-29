@@ -96,7 +96,131 @@ commitDeletion会递归地将子节点从fiber树上移除，对于节点上存�
 有nextScheduleRoot指针指向下一个待更新HostRoot,构成链表结构。
 
 
-## 5. 任务调度
+
+
+
+## 5. diff算法
+
+### diff策略
+通过制定大胆的策略，将O(n^3)复杂度的问题转换成O(n)复杂度的问题。
+
+1. DOM节点跨层级移动操作特别少，可以忽略不计；
+2. 拥有相同类的2个组件将会生成相似的树形结构，拥有不同类的两个组件将会生成不同的树形结构；
+3. 对于同一层级的一组子节点，它们可以通过唯一id进行区分。
+
+### tree diff
+2棵树分层比较，两棵树只会对同一层级的节点进行比较。当发现节点已经不存在，则该节点以及子节点会被完全删除掉，不会用于进一步的比较。这样只需要对树进行一次遍历，便能完成整个DOM树的比较。
+
+react15 伪代码：
+```js
+updateChildren: function(nextNestedChildrenElements, transaction, context) {
+    updateDepth++;
+    var errorThrown = true;
+    try {
+        this._updateChildren(nextNestedChilrenElements, transaction, context);
+        errorThrown = false;
+    } finally {
+        updateDepth--;
+        if (!updateDepth) {
+            if (errorThrown) {
+                clearQuene();
+            } else {
+                processQueue();
+            }
+        }
+    }
+}
+```
+
+
+### element diff
+同一层级，diff操作：INSERT_MARKUP、MOVE_EXISTING、REMOVE_NODE;
+
+react15 部分源码：
+```js
+_updateChildren: function(nextNestedChildrenElements, transaction, context) {
+    var prevChildren = this._renderedChildren;
+    var removedNoes = {};
+    var nextChildren = this._reconcilerUpdateChildren(prevChildren, nextNestedChildrenElements, removedNodes, transaction, context);
+    // 如果不存则prevChildren 和 nextChildren, 则不作diff处理
+    if (!nextChildren && !prevChildren) {
+        return;
+    }
+    var updates = null;
+    var name;
+    // lastIndex 是prevChildren中最后的索引，nextIndex是nextChildren中每个节点的索引
+    var lastIndex = 0;
+    var nextIndex = 0;
+    var lastPlaceNode = null;
+    for (name in nextChildren) {
+        if (!nextChildren.hasOwnProperty(name)) {
+            continue;
+        }
+        var prevChild = prevChildren && prevChildren[name];
+        var nextChild = nextChildren[name];
+        if (prevChild === nextChild) {
+            // 移动节点
+            updates = enqueue(
+                updates,
+                this.moveChild(prevChild, lastPlaceNode, nextIndex, lastIndex);
+            );
+            lastIndex = Math.max(prevChild._mountIndex, lastIndex);
+            prevChild._mountIndex = nextIndex;
+        } else {
+            if (prevChild) {
+                lastIndex = Math.max(prevChild._mountIndex, lastIndex);
+            }
+            updates = enqueue(
+                updates,
+                this._mountChildAtIndex(nextChild, lastPlaceNode, nextIndex, transaction, context);
+            );
+            nextIndex++;
+            lastPlaceNode = ReactReconciler.getNativeNode(nextChild);
+        }
+        // 如果父节点不存在，则将其子节点全部移除
+        for(name in removedNodes) {
+            if (removedNodes.hasOwnProperty(name)) {
+                updates = enqueue(
+                    updates,
+                    this._unmountChild(prevChildren[name], removeedNodes[name]);
+                );
+
+            }
+        }
+        // 处理更新队列
+        if (updates) {
+            precessQueue(this, updates);
+        }
+        this._renderedChildren = nextChildren;
+    }
+},
+
+moveChild: function(child, afterNode, toIndex, lastIndex) {
+    // 如果子节点index小于lastIndex，则移动
+    if (child._mountIndex < lastIndex) {
+        return makeMove(child, afterNode, toIndex);
+    }
+},
+// 创建节点
+createChild: function(child, afterNode, mountImage) {
+    return makeInsertMarkup(mountImage, afterNode, child._mountIndex);
+},
+// 删除节点
+removeChild: function(child, node) {
+    return makeRomove(child, node);
+},
+// 卸载已经渲染的子节点
+_unmountChild: function(child, node) {
+    var update = this.removeChild(child, node);
+    child._mountIndex = null;
+    return update;
+}
+```
+
+
+
+
+## 6. 任务调度
 利用requestIdleCallback实现task scheduling
 ```js
                                                       |
@@ -202,7 +326,7 @@ function updateComponentOrElement(fiber) {
 
 
 
-## 6. Flux模式
+## 7. Flux模式
 数据和逻辑永远是单向流动
 
 ```js
@@ -220,7 +344,7 @@ function updateComponentOrElement(fiber) {
 用户在view上的操作最终会映射为一类Action，Action传递给Dispatcher,再由Dispatcher执行注册在指定Action上的回调函数。最终完成对Store的操作，store中数据变化，view监听并作出反应。
 
 
-## 7. 组件的实现与挂载
+## 8. 组件的实现与挂载
 ```js
 <A />
 ```
