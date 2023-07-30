@@ -490,25 +490,10 @@ function updateComponentOrElement(fiber) {
 
 
 
-## 7. Flux模式
-数据和逻辑永远是单向流动
-
-```js
-    _______________calls______________
-    |                                 |
- __ ↓__     __________     _____     _|__
-|Action|——>|dispatcher|——>|store|——>|view|
- ——————     ——————————     —————     ————
-
-```
-* dispatcher: 分发事件；
-* store: 保存数据，响应事件更新数据；
-* view: 订阅store中数据，渲染页面；
-
-用户在view上的操作最终会映射为一类Action，Action传递给Dispatcher,再由Dispatcher执行注册在指定Action上的回调函数。最终完成对Store的操作，store中数据变化，view监听并作出反应。
 
 
-## 8. 组件的实现与挂载
+
+## 7. 组件的实现与挂载
 ```js
 <A />
 ```
