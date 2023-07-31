@@ -254,3 +254,225 @@ function loadInitData(ip) {
     ];
 }
 ```
+
+
+### 4.3 解读Redux
+
+#### 4.3.1 参数归一化
+核心功能**createStore**
+v3版本：
+```js
+export default function createStore(reducer, initialState, enhancer) {
+    // ...
+    // 第二个参数是函数，默认忽略了initialState，而传入了enhancer
+    if (typeof initialState === 'function' && typeof enhancer === 'undefined') {
+        enhancer = initialState;
+        initialState = undefined;
+    }
+    if (typeof enhancer !== 'undefined') {
+        if (typeof enhancer !== function) {
+            throw new Error('Expected the enhancer to be a function');
+        }
+        return enhancer(createStore)(reducer, initialState);
+    }
+}
+```
+
+#### 4.3.2 初始状态以及getState
+
+```js
+// 当前reducer，支持store.replaceReducer动态替换reducer
+var currentReducer = reducer;
+var currentState = initialState;
+// 监听store变化的监听器
+var listeners = [];
+// 某个action处于分发状态
+var isDispatching = false;
+
+function getState() {
+    return currentState;
+}
+
+```
+
+#### 4.3.3 subscribe
+react-redux中的connect方法隐式完成了这个方法
+```js
+function subscribe(listener) {
+    listeners.push(listener);
+    var isSubscribed = true;
+    return function unsubscribe() {
+        if (!isSubscribed) {
+            return;
+        }
+        isSubscribed = false;
+        var index = listeners.indexOf(listener);
+        listenders.splice(index, 1);
+    }
+}
+```
+
+#### 4.3.4 dispatch
+
+```js
+function dispatch(action) {
+    if (!isPlainObject(action)) {
+        throw new Error(
+            'Actions must e plain object.' +
+            'Use custom middleware for async actions'
+        );
+    }
+    if (typeof action.type === 'undefined') {
+        throw new Error('type 没了');
+    }
+    if (isDispatching) {
+        throw new Error('Reducers may not dispatch actions');
+    }
+    try {
+        // 设定标志位
+        isDispatching = true;
+        currentState = currentReducer(currentState, action);
+    } finally {
+        isDispatching = false;
+    }
+    // 依次调用监听者
+    listeners.slice().forEach(listener => listener());
+    return action;
+}
+```
+
+
+
+
+## 4.4 解读react-redux
+
+### 4.4.1 Provider
+
+简单代码：
+```js
+export default class Provider extends Component {
+    getChilContext() {
+        return {store: this.store}
+    }
+
+    // 拿到store，挂载到当前实例上
+    constructor(props, context) {
+        super(props, context);
+        this.store = props.store;
+    }
+    render() {
+        const {children} = this.props;
+        return Children.only(children);
+    }
+}
+```
+
+### 4.4.2 connect
+可接受4个参数，每个参数有若干可选形式
+
+伪代码：
+```js
+import hoistStatics from 'hoist-non-react-statics';
+
+export default function connect(mapStateToProps, mapDispatchToProps, mergeProps, options = {}) {
+    //...
+    // 返回一个高阶组件
+    return function wrapWithConnect(WrappedComponent) {
+        // ...
+        class Connect extends Component {
+            //...
+            render() {
+                //...
+                if (withRef) {
+                    this.renderElement = createElement(WrappedComponent, {
+                        ...this.mergedProps,
+                        ref: 'wrappedInstance'
+                    });
+                } else {
+                    this.renderedElement = createElement(WrappedComponent, this.mergedProps);
+                }
+                return this.renderedElement;
+            }
+        }
+        // ...
+        return hoistStatics(Connect, WrappedComponet);
+    }
+}
+```
+
+
+#### 1. mapStateToProps
+需要从redux状态树中提取哪些部分当作props，传给当前组件。mapStateToProps一般返回一个对象，也可以优化缓存时候，返回一个函数。
+
+部分伪代码：
+```js
+// 不传默认会是一个返回空对象的函数
+const mapState = mapStateToProps || defaultMapStateToProps;
+// ...
+class Connect extends Component {
+    configureFinalMapState(store, props) {
+        // 一般是一个对象
+        const mappedState = mapState(store.getState(), props);
+        // 也可以是返回一个函数
+        const isFactory = typeof mappedState === 'function';
+
+        this.finalMapStateToProps = isFactory ? mappedState : mapState;
+        this.doStatePropsDependOnOwnProps = this.finalMapStateToProps.length !== 1;
+
+        if (isFactory) {
+            // 返回缓存的
+            return this.computeStateProps(store, props);
+        }
+        return mappedState;
+    }
+    // 计算出最终从redux提取的状态
+    computeStateProps(store, props) {
+        if (!this.finalMapStateToProps) {
+            return this.configureFinalMapState(store, props);
+        }
+
+        const state = store.getState();
+        // 执行函数
+        const stateProps = this.doStatePropsDependOnOwnProps ? this.finalMapStateToProps(state, props): this.finalMapStateToProps(state);
+        return stateProps;
+    }
+
+}
+```
+
+#### 2. 代码热替换
+提供了replaceReducer，因为connect中也添加了相关的支持。
+
+connect中部分代码：
+```js
+if (process.env.NODE_ENV !== 'production') {
+    // 额外定义生命周期，判断当前版本与全局版本是否一致
+    Connect.prototype.componentWillUpdate = function componentWillUpdate() {
+        if (this.version === version) {
+            return;
+        }
+    }
+    this.version = version;
+    // 重新订阅
+    this.trySubscribe();
+    this.clearCache();
+}
+```
+
+```js
+let nextVersion = 0;
+export default function connect(mapStateToProps, mapDispatchToProps, mergeProps, options = {}) {
+    // ...
+    // 帮助追踪热重载,每次执行，nextVersion都+1
+    const version = nextVersion++;
+    return function wrapWithConnect(WrappedComponent) {
+        //....
+        class Connect extends Component {
+            constructor(props, context) {
+                // ...
+                this.version = version;
+            }
+        }
+    }
+}
+```
