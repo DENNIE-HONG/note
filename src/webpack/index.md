@@ -36,6 +36,19 @@
 })
 ```
 
+Q: webpack中，module，chunk和bundle的区别是什么 ？
+
+
+
+A:
+1. 一份逻辑代码，都是module；
+2. module源文件传到webpack打包，根据引用关系生成chunk文件；
+3. 最后输出bundle文件，经过加载和编译的最终源文件，可直接在浏览器中运行。
+
+
+
+
+
 
 
 ## loader与plugin？
@@ -564,3 +577,108 @@ class Compliation extends Tapable {
     }
 }
 ```
+
+
+```js
+class Compiler extends Tapable {
+    constructor(context) {
+        super();
+        this.hooks = {
+            beforeRun: new AsyncSeriesHook(["compilation"]),
+            run: new AsyncSeriesHook(["compilation"]),
+            beforeCompile: new AsyncSeriesHook(["params"]),
+            compile: new SyncHook(["params"]),
+            make: new AsyncParallerHook(["compilation"]),
+            afterCompile: new AsyncSeriesHook(["compilation"]),
+            compilation: new AsyncSeriesHook(["compilation", "params"]),
+            emit: new AsyncSeriesHook(["compilation"]),
+            afterEmit: new AsyncSeriesHook(["compilation"]),
+            //...
+        };
+        // ...
+    }
+    run(callback) {
+        const startTime = Date.now();
+        const onCompiled = (err, compilation) => {
+            //...
+            this.emitAssets(compilation, err => {
+                if (err) return callback(err);
+                if (compilation.hooks.needAdditionalPass.call()) {
+                    compilation.needAdditionalPass = true;
+                    const state = new Stats(compilation);
+                    state.startTime = startTime;
+                    state.endTime = Date.now();
+                    this.hooks.done.callAsync(state, err => {
+                        if (err) return callback(err);
+                        this.hooks.addtionalPass.callAsync(err => {
+                            if (err) return callback(err);
+                            this.compile(onCompiled);
+                        });
+                    });
+                    return;
+                }
+            });
+        };
+        this.hooks.beforeRun.callAsync(this, err => {
+            if (err) callback(err);
+            this.hooks.run.callAsync(this, err => {
+                //...
+                this.readRecord(err => {
+                    // ...
+                    this.compile(onCompiled);
+                });
+            });
+        });
+    }
+    compile(callback) {
+        const params = this.newCompilationParams();
+        this.hooks.beforeCompile.callAsync(params, err=> {
+            if (err) return callabck(err);
+            this.hooks.compile.call(params);
+            const compilation = this.newCompilation(params);
+            this.hooks.make.callAsync(compilation, err => {
+                if (err) return callback(err);
+                compilation.finish();
+                // make后调用seal生成资源
+                compilation.seal(err => {
+                    if (err) return callback(err);
+                    this.hooks.aftrCompiler.callAsync(compilation, err => {
+                        // ...
+                        return callback(null, compilation);
+                    });
+                });
+            });
+        });
+    }
+}
+```
+
+
+## 问题
+Q: webpackPrefetch、webpackPreload和webpackChunkName ？
+A: import文件时，以注释形式为chunk取别名。
+如果import的时候，添加webpackPrefetch，
+
+```js
+await import(/* webpack ChunkName: "lodash" */ /* webackPrefetch: true */ 'lodash');
+
+// 即
+<link rel="prefetch" as="script" href="xx.bundle.js" >
+```
+父chunk完成加载后，webpack在闲时加载lodash文件。
+区别：
+* preload: chunk再父chunk加载时，并行加载；
+* prefetch：chunk在父chunk加载结束后开始加载；
+* preload：中等优先级，并立即下载；
+* prefetch: 浏览器闲时下载；
+
+
+
+
+Q: hash、chunkHash、contenthash有什么不同？
+A:
+* hash: 计算是跟整个项目的构建有关，只改动了某一文件，但文件都是用同一份hash，hash变化，缓存失效。
+* chunkHash: 为了解决这个问题，根据入口文件进行依赖解析，构建对应的chunk，生成对应哈希值。
+
+* contentHash: index.js和index.css同一个chunk，index.js变动，index.css没变动，打包后hash均变化，对css文件来说是浪费。利用contenthash, 对资源内容创建出唯一hash。
+
