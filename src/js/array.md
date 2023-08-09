@@ -18,6 +18,21 @@ const a = [1, 2, 3, 4, 5, 6, 7, 8];
 a.splice(4); // 返回[5, 6, 7, 8]
 console.log(a); // [1, 2, 3, 4]
 ```
+
+### shift
+用于把数组的第一个元素从其中删除，并返回第一个元素的值;
+易错题：
+```js
+const a = [[1], [2], [3]];
+const b = [...a];
+b.shift().shift();
+console.log(a);
+// [[], [2], [3]]
+```
+
+
+
+
 ### map
 返回新数组
 
@@ -57,7 +72,7 @@ push原理例子
 ```js
 let obj = {"1": 'a', '2': 'b', length: 2};
 Array.prototype.push.call(obj, 'c');
-console.log(obj); 
+console.log(obj);
 
 // 解,push的原理
 Array.prototype.push = function(target) {
@@ -103,7 +118,7 @@ Array.prototype.selfReduce = function(fn, initialValue) {
 
 
 ## 2. 稀疏数组
-数组直接量允许有可迭的结尾逗号，[,,]是2个元素不是3个。  
+数组直接量允许有可迭的结尾逗号，[,,]是2个元素不是3个。
 稀疏数组与省略数组区别：
 ```js
 const a1 = [,,,]; // [undefined, undefined,undefined]
@@ -144,7 +159,7 @@ const a = {
   '2': 'c',
   length: 3
 };
-console.log(Array.prototype.join.call(a, '+')); // 'a+b+c' 
+console.log(Array.prototype.join.call(a, '+')); // 'a+b+c'
 ```
 注意：字符串可看作类数组，但其是只读的，push()、sort()、reverse()、splice()等改变原数组方法在字符串上无效！
 ```js
@@ -175,7 +190,7 @@ function createArray(len, arr = []) {
   return arr;
 }
 ```
-2. 
+2.
 ```js
  [...Array(100).keys()]
 ```

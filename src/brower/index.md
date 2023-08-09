@@ -1,13 +1,13 @@
 # 1. v8引擎
-## 垃圾回收机制分代式垃圾回收机制。 
+## 垃圾回收机制分代式垃圾回收机制。
 * 新生代： --max-new-space-size 32M/16M
 * 老生代： --max-old-space-size 1.4G/0.7G
 ### 新生代：scavenge算法
 1. Form空间分配对象
 2. 回收时，存活对象-> To空间，非存活对象释放
-3. Form空间 <=> To空间，存活对象呼唤 
+3. Form空间 <=> To空间，存活对象呼唤
 
-缺点:只能使用堆内存的一半；  
+缺点:只能使用堆内存的一半；
 优点：只复制存活对象，效率高，而新生代对象生命周期短，故而适合。
 在新生代多次复制后仍存活，*晋升*为老生代
 
@@ -19,8 +19,8 @@
 3. 还存在标记的变量被视为准备删除变量；
 4. 销毁带标记的值并回收占用的内存空间；
 
-```js          
-       ⭕️     /即将被删除的 
+```js
+       ⭕️     /即将被删除的
        |     /
        ↓    /
        o   o   o
@@ -29,7 +29,7 @@
 ```
 内存泄露：由于疏忽or错误造成程序未能释放不再使用的内存，造成内存的浪费。
 识别方案：连续5次垃圾回收，内存占用一次比一次大。
-常见案例：  
+常见案例：
 1. 意外的全局变量；
 2. 被遗忘的定时器和回调函数；
 3. 闭包（有巨大数组，被反复使用）；
@@ -37,9 +37,20 @@
 
 
 #### 标记整理
-标记后，将存活对象移动，清理边界外内存。  
-缺点： 内存碎片  
+标记后，将存活对象移动，清理边界外内存。
+缺点： 内存碎片
 v8主要用标记清除，空间不足时才使用标记整理。
+
+
+### 引用计数法
+优势:
+1. 即刻回收垃圾，当被引用数值为0，对象马上把自己作为空闲空间连到空闲链表上；
+2. 最大暂停时间很短；
+3. 不用遍历堆里面所有活动对象和非活动对象；
+劣势：
+1. 计数器需要占很大位置；
+2. 无法解决循环引用无法回收的问题
+
 
 
 
@@ -54,7 +65,7 @@ v8主要用标记清除，空间不足时才使用标记整理。
 
 ### 词法分析
 逐个扫描输入字符，转换为词法单元（Token）序列，传递给语法分析器进行语法分析。
-Token: 
+Token:
 * 关键字
 * 标识符
 * 操作符
@@ -65,8 +76,8 @@ Token:
 ```js
 产生式头         产生式体
   ↓               ↓
-func  -> function  id (params)  {block} 
-            |       |_____|_______|     
+func  -> function  id (params)  {block}
+            |       |_____|_______|
          终结符号           非终结符号
          (token)
 ```
@@ -108,9 +119,9 @@ Token('var') 加入结点属性中。
               |Declarator|
                ——————————
                /        \
-      _________       _______      
+      _________       _______
      |identifer|     |String |
-      —————————      |Literal| 
+      —————————      |Literal|
        foo            ———————
                         "bar"
 
@@ -128,11 +139,11 @@ Token('var') 加入结点属性中。
 ```js
 call stack （空间小） memory heep（大）
  _____             __________
-| 栈  |            |  堆     | 
+| 栈  |            |  堆     |
 |     |  boolean   |         | 引用数据类型
 |     |  number    |         |
 |_____|  ...       |_________|
-           
+
 ```
 闭包函数里的变量存储？
 * captured variables：即闭包中访问的外部变量，基本类型变量在闭包中也是存在堆中的；
@@ -141,15 +152,15 @@ call stack （空间小） memory heep（大）
 
 # 2. cookie
 http的无状态：
-服务端对于客户端每次发送的请求都认为它是一个新请求，上一次会话和下一次会话没有联系。  
-cookie机制：  
+服务端对于客户端每次发送的请求都认为它是一个新请求，上一次会话和下一次会话没有联系。
+cookie机制：
 客户端请求服务器时，如果服务器需要记录该用户状态，就使用response向client种cookie。当浏览器再请求服务器时，把cookie发送给服务器。服务器通过检查cookie来获取用户状态。
 
 
 
-cookie优化：  
+cookie优化：
 客户端在域名A下有cookie,页面依赖很多静态资源，静态资源会默认带上cookie，造成浪费。
-解决：  
+解决：
 多域名拆分，将静态资源分组，放到不同域名下
 
 
@@ -167,21 +178,21 @@ cookie优化：
 
 
 # 4. Event Loop
-js在执行中产生执行环境，会被顺序加入到执行栈中。遇到异步代码，会被挂起并加入到Task(有多种task)。队列中，一旦执行栈为空，Event Loop从Task队列中拿出需要执行的代码并放入执行栈中执行。  
-任务源：  
-* 微任务  
-* 宏任务  
+js在执行中产生执行环境，会被顺序加入到执行栈中。遇到异步代码，会被挂起并加入到Task(有多种task)。队列中，一旦执行栈为空，Event Loop从Task队列中拿出需要执行的代码并放入执行栈中执行。
+任务源：
+* 微任务
+* 宏任务
 
-不同任务源会被分配到不同的task队列中。  
-微任务：  
-* process.nextTick  
-* promise  
+不同任务源会被分配到不同的task队列中。
+微任务：
+* process.nextTick
+* promise
 * Object.observe
-* MutationObserver  
+* MutationObserver
 
-宏任务：  
+宏任务：
 * script
-* setTimeout 
+* setTimeout
 * setInterval
 * setImmediate
 * I/O
@@ -219,7 +230,7 @@ css由单独的下载线程异步下载。
                  |Render|——>|Layout|——>|Paint|
                  | Tree |    ——————     —————
  ___     _____/   ——————
-|CSS|——>|CSSOM|  
+|CSS|——>|CSSOM|
  ———     —————
 
 
@@ -234,16 +245,16 @@ css由单独的下载线程异步下载。
 <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><font color="blue">==</font><font color="pink">===</font>
 
 defer脚本：后台加载脚本，等文档解析完，defer脚本执行。
-<font color="green">=================</font>  
+<font color="green">=================</font>
 <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><font color="blue">==</font><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><font color="pink">===</font>
 
 async脚本：后台加载脚本，文档解析不中断，加载后文档停止解析，脚本执行。
 
-<font color="green">=========<font color="gray">===</font>==</font>  
+<font color="green">=========<font color="gray">===</font>==</font>
 <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><font color="blue">==</font><font color="pink">===</font>
 
 图例：
-* <font color="green">HTML解析</font>  
+* <font color="green">HTML解析</font>
 * <font color="gray">HTML暂定</font>
 * <font color="blue">script下载</font>
 * <font color="pink">script执行</font>
@@ -289,8 +300,8 @@ Content-Security-Policy字段
 ```
 
 ### 默认优先级规则
-网络层优先级：Highest、Medium、Low、Lowest、idle  
-控制台显示：Highest、high、Medium、Low、Lowest  
+网络层优先级：Highest、Medium、Low、Lowest、idle
+控制台显示：Highest、high、Medium、Low、Lowest
 
 html、css、font > preload、script、xhr请求 > 图片、语音、视频 > prefetch
 
@@ -302,10 +313,10 @@ html、css、font > preload、script、xhr请求 > 图片、语音、视频 > pr
   脚本在第一张图片之后 -> medium
 
 ### 关键请求链
-可视区域渲染完毕，必须加载的资源请求队列。  
+可视区域渲染完毕，必须加载的资源请求队列。
 优化关键请求链：
-1. 利用preload和prefetch  
-  
+1. 利用preload和prefetch
+
 ```js
 // 资源预加载：
 <link rel="prefetch" href="test.css" />
@@ -317,9 +328,9 @@ html、css、font > preload、script、xhr请求 > 图片、语音、视频 > pr
 <link rel="prerender" href="//m.xx.com" />
 ```
 
-#### preload与prefetch区别？  
+#### preload与prefetch区别？
 * preload：告诉浏览器当前页需要的资源，提高资源请求优先级；
-* prefetch:  
+* prefetch:
 用户将来可能在其他页（非本页）可能用的资源，浏览器空闲时预加载放在http缓存里（比如dns-prefetch）,prefetch会把资源优先级 ——> 最低。
 
 
@@ -370,7 +381,7 @@ html、css、font > preload、script、xhr请求 > 图片、语音、视频 > pr
 * 微任务：jobs（当前task执行后立即执行的任务）
 ```js
 task -> 渲染 -> task ...
-      ↓  
+      ↓
   执行完所有jobs
 ```
 宏任务事件队列由事件触发线程维护；
@@ -455,7 +466,7 @@ a域与b域相互通信，通过中间页c来实现，不同域利用iframe的lo
 ```
 
 ### 方案4：window.name + iframe
-window.name值在不同页面加载后依旧存在，可支持（2M）的值。  
+window.name值在不同页面加载后依旧存在，可支持（2M）的值。
 1. a.html(domain1.com/a.html)
 ```js
 var proxy = function(url, callback) {
@@ -500,7 +511,7 @@ proxy('http://domain2.com/b.html', function(data) {
 ```
 
 ### 方案5：postMessage
-1) 页面和其打开的新窗口的数据传递  
+1) 页面和其打开的新窗口的数据传递
 2) 多窗口之间消息传递
 3) 页面与嵌套的iframe消息传递
 
@@ -526,7 +537,7 @@ proxy('http://domain2.com/b.html', function(data) {
         // 消息来源无法识别，忽略
         break;
     }
-  
+
   }, false);
 </script>
 ```
@@ -549,8 +560,8 @@ proxy('http://domain2.com/b.html', function(data) {
 ```
 
 ### 方案6：CORS
-普通跨域请求：服务端Access-Control-Allow-Origin, 前端无须设置。  
-前端代码：  
+普通跨域请求：服务端Access-Control-Allow-Origin, 前端无须设置。
+前端代码：
 ```js
 // 是否带cookie
 xhr.withCredentials = true;
@@ -559,7 +570,7 @@ xhr.seRequestHeader('Content-Type', 'application/x-www-form-urlencode');
 xhr.send('user=admin');
 ...
 ```
-服务端设置：  
+服务端设置：
 ```js
 const http = require('http');
 const server = http.createServer();
@@ -594,7 +605,7 @@ location / {
   add-header Access-Control-Allow-Origin *;
 }
 ```
-nginx反向代理接口跨域：  
+nginx反向代理接口跨域：
 通过nginx配置一个代理服务器（域名与1相同，端口不同）做跳板机，反向代理domain2接口，并可修改cookie中domain信息，方案当前域
 cookie写入，实现跨域登入。
 ```
@@ -618,7 +629,7 @@ server {
 2. 开发时，devServer配置proxy
 
 ### 方案9：WebSocket协议
-实现浏览器与服务器全双工通信，允许跨域，可用socket.io  
+实现浏览器与服务器全双工通信，允许跨域，可用socket.io
 前端代码：
 ```html
 <script src="./socket.io.js"></script>
@@ -683,7 +694,7 @@ startTime|        | fetchStart |   | |  |       ConnectEnd                  | | 
 |      unloadEventEnd                                requestStart|          responseEnd    |      loadEventEnd
 unloadEventStart                                                 responseStart             loadEventStart
 
-                 
+
 ```
 页面加载时间：
 ```js
