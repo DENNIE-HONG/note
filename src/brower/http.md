@@ -118,6 +118,111 @@ N|V|V|V|       |S|             |
 **Masking-key**: 0 or 4字节（32位）
 
 
+#### 用Nodejs实现websocket协议
+1. 调用
+客户端通过HTTP Upgrade 请求，由服务器进行协议转换。
+
+伪代码：
+```js
+const server = http.createServer(function(req, res) {
+    res.end('websocket test \r\n');
+});
+// upgrade请求
+server.on('upgrade', function(req, socket, upgradeHead) {
+    // 初始化ws
+    const ws = new WebSocket(req, socket, upgradeHead);
+    //...
+});
+```
+
+2. 构造函数
+```js
+class WebSocket extends EventEmitter {
+    construtor(req, socket, upgradeHead) {
+        super();
+        // 1. 构造响应头部分resHeaders
+        // 2. 监听socket的data事件，以及error事件
+        // 3. 初始化成员属性
+    }
+}
+
+```
+
+2. 1 返回相应头:
+    * 将SecWebSocket-Key跟xx拼接；
+    * 通过SHA1计算出摘要，并拼接成base64字符串；
+
+```js
+const reskey = hasWebSocketKey(req.headers['sec-websocket-key']);
+// 构造响应头
+const resHeaders = [
+    'HTTP/1.1 101 Switching Protocols',
+    'Upgrade:websocket',
+    'Connection: Upgrade',
+    'Sec-WebSocket-Key: '+ resKey
+]
+.concat(',')
+.join('\r\n');
+socket.write(resHeaders);
+
+```
+
+2. 2 监听事件
+
+```js
+socket.on('data', data => {
+    thi.buffer = Buffer.concat([this.buffer, data]);
+    while(this._processBuffer()) {}
+});
+
+```
+
+3. 帧数据的处理Frame
+Opcode操作码决定了如何解析后续的数据载荷。
+Opcode：
+* 数据帧
+* 操作帧
+
+```js
+// 截取第一个字节后4位
+const opcode = byte1 & 0x0f;
+this._handleFrame(opcode, payload);
+
+_handleFrame(opcode, buffer) {
+    let payload;
+    switch(opcode) {
+        case OPCODES.TEXT:
+            // 文本需要转换成utf8
+            payload = buffer.toString('utf-8');
+            this.emit('data', opcode, payload);
+            break;
+        case OPCODES.BINARY:
+            // 二进制文件直接交付
+            payload = buffer;
+            this.emit('data', opcode, payload);
+            break;
+        case OPCODES.PING:
+            this.doSend(OPCODES.PONG, buffer);
+            break;
+        case OPCODES.PONG:
+            // 不做处理
+            break;
+        case OPCODES.CLOSE:
+            // close有很多关闭码
+            let code, reason;
+            if (buffer.length >= 2) {
+                code = buffer.readUInt16BE(0);
+                reason = buffer.toString('utf8', 2);
+            }
+            this.close(code, reason);
+            this.emit('close', code, reason);
+            break;
+        default:
+            this.close(1002, 'unhandle opcode:' + opcode);
+            break;
+    }
+}
+```
 
 
 
