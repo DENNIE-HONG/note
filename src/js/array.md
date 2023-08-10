@@ -194,3 +194,28 @@ function createArray(len, arr = []) {
 ```js
  [...Array(100).keys()]
 ```
+
+### 去重方法
+例子：用reduce
+
+```js
+Array.prototype.unique = function() {
+    return this.sort().reduce((init, current) => {
+        if (init.length === 0 || init[init.length-1] !== current) {
+            init.push(current);
+        }
+        return init;
+    }, []);
+}
+```
+
+例子：用map方法
+
+```js
+Array.prototype.unique = function() {
+    const tmp = new Map();
+    return this.filter((item) => {
+        return !tmp.has(item) && tmp.set(item, 1);
+    });
+}
+```
