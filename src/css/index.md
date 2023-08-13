@@ -1,65 +1,45 @@
 # CSS
 
-## 父元素高度坍塌
+## 1. 父元素高度坍塌
 一个块级元素没有设置height, 其height由子元素撑开。子元素浮动后脱离标准文档流，父元素没有内容可撑开，其height被忽略。
 
-## 清除浮动方法
-1. 父级div设高；
-2. 使用空元素
-```html
-<div class="clear"></div>
-```
-```css
-.clear{
-  clear: both;
-}
-```
-3. 父元素div一起浮动
-4. 父级div定义display: table;
-5. 父元素触发了BFC
-```css
-.fu {
-  overflow: hidden;
-}
-```
-6. 父级div定义伪类after和zoom
-```css
-.clearfix: after {
-  content: '.';
-  display: block;
-  height: 0;
-  clear: both;
-  visibility: hidden;
-}
-// 兼容IE6/IE7
-.clear {
-  zoom: 1;
-}
-```
 
-## 清除图片底部间隙
-1. 图片块状化，无基线对齐
-```css
-img {
-  display: block;
-}
-```
-2. 图片底线对齐
-```css
-img {
-  vertival-align: botom;
-}
-```
-3. 行高足够小
 
-## 格式化上下文
+
+
+## 2. Flex
+### flex-basis
+作用与width一样。
+在flex布局中，子项设置width无直接效果。
+```css
+flex-basis: auto;
+/* 根据子列表项目自身尺寸渲染*/
+
+```
+优先级：
+min-width > max-width > width > Content Size
+flex-basis优先级 > width.
+
+Q: 区别？
+1. width: 100px;
+2.  flex-basis: 100px;
+
+
+A: 当最小内容宽度较大时，例如连续英文单词，content内容最小宽度超过了100px，“2”能正常显示，第"1"种写法字符溢出。
+
+
+
+
+
+
+## 3. 格式化上下文
 * BFC,block formatting context
 * IFC, inline formatting context(一个区域仅包含水平排列元素)
 * FFC, flex formatting context
 * GFC, grid formatting context
 
 ### inline box(行框)
-包含IFC内部的所有子元素的虚拟矩形区域，形成的每一行。  
+包含IFC内部的所有子元素的虚拟矩形区域，形成的每一行。
 行框的模型结构：（6条线）
 * top线
 * text-top线
@@ -69,7 +49,7 @@ img {
 * bottom线
 ```js
  _ _ _ _ _ _ _  ————> top线
-|___________  |————> text-top             
+|___________  |————> text-top
 |_ _ _xaj_ _ _|----> middle
 |_____________|____ bottom线
 
@@ -98,44 +78,10 @@ Block Formatting Context(块级格式化上下文)
 
 
 
-## 一个不定宽高的DIV,垂直水平居中？
-1. flex
-```css
-.parent {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-```
-
-2. 绝对定位
-```css
-.parent {
-  display: relative;
-}
-div {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-```
-
-3. 利用table
-```css
-.parent {
-  display: table-cell;
-  text-align: center;
-  vertical-align: middle;
-}
-div {
-  display: inline-block;
-  vertical-align: middle;
-}
-```
 
 
-## 伪元素
+
+## 4. 伪元素
 ::before 和 :after中双冒号和单冒号有什么区别？
 单冒号用于css伪类；
 双冒号用于css伪元素；
@@ -168,7 +114,7 @@ div {
 
 
 
-## 流体布局
+## 5. 流体布局
 块级元素：
 1. width固定，margin是auto，即margin撑满剩下的空间；
 2. margin固定，width是auto，width撑满剩下的空间；
@@ -197,7 +143,11 @@ vertical-align:
 * 20px 2em: baseline相当于0，使元素的基线对齐到父元素的基线之上给定长度；
 * 20%：元素的基线对齐到父元素的基线之上的百分比，是line-height的百分比；
 
-## 层叠上下文
+
+
+
+
+## 6. 层叠上下文
 css3新增层叠上下文：
 1. opacity !== 1;
 2. transform !== none;
@@ -218,7 +168,7 @@ css3新增层叠上下文：
      ——|块级盒子         |
        |   ________________
         ——|浮动盒子         |
-          |   ________________ 
+          |   ________________
            ——|内联盒子         |
              |   ________________
               ——|z-index:auto/0  |
@@ -226,12 +176,19 @@ css3新增层叠上下文：
                  ——|正z-index       |
                    |                |
                     ————————————————
-```    
+```
 
 
-## css优先级计算规则？
-ID > class > 元素选择器  
-选择器的特殊值为0,0,0,0表示。  
+
+
+
+
+
+
+
+## 7. css优先级计算规则？
+ID > class > 元素选择器
+选择器的特殊值为0,0,0,0表示。
 * ID选择器的特殊值: 0,1,0,0
 * 类、属性选择器、伪类：0,0,1,0
 * 元素、伪元素：0,0,0,1
@@ -254,6 +211,16 @@ div#demo a // 0,1, 0, 2
 1. 先看权重!important；
 2. 权重相同比较规则特殊性；
 3. 规则特殊性也一样时，按顺序排序，后声明优先级高；
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -339,7 +306,7 @@ div {
 ```
 
 ### 文字下划线
-第一种： 
+第一种：
 ```css
 div {
   box-shadow: 0 -1px 0 0 #fff inset;
@@ -474,3 +441,7 @@ ______________________
   margin-left: -100px;
 }
 ```
+
+
+
+
