@@ -23,15 +23,64 @@ AST每一层都有：
 额外属性start/end/loc等，描述该节点在原始代码中的位置。
 
 ## 配置
-preset: 插件集合。例如es2015包含十几二十转义插件，可单个安装也可使用preset套餐。
+**preset**: 插件集合。例如es2015包含十几二十转义插件，可单个安装也可使用preset套餐。
 执行顺序：
 * plugin: 运行在preset之前，从前到后顺序执行；
 * preset：从后向前（保证向后兼容）,例如preset: ["es2015", "stage-0"]先执行stage-0才不报错。
 
-env：通过配置得知目标环境的特点，只做必要转换。  
-babel-polyfill:转换新的API(很大)，babel会转换js语法，但每个转化的文件都会插入一个段转换后定义的代码导致重复。  
-使用babel-plugin-transform-runtime之后，从定义方法改成引用，重复定义即重复引用，不存在代码重复了。  
-babel-runtime是这些方法集合处:
+**env**：通过配置得知目标环境的特点，只做必要转换。但是内置函数、新的实例方法无法转换！
+解决？babel/polyfill.
+
+**babel-polyfill**: 源码中import进来，大小约89k。
+转换新的API(很大)，babel会转换js语法，但每个转化的文件都会插入一个段转换后定义的代码导致重复。
+使用babel-plugin-transform-runtime之后，从定义方法改成引用，重复定义即重复引用，不存在代码重复了。
+**babel-runtime** 是这些方法集合处:
 1. core-js:转换一些内置类（Promise、Symbol等）、静态方法等；
 2. regenerator:generator/yeild、async/await、
 3. helpers
+
+
+
+### 问题
+#### Q: 只使用某个新方法，引入整个垫片又太大了？
+A: 设置useBuiltIns参数。
+```json
+"preset": [
+    ["@babel/preset-env", {
+        "useBuiltIns": "usage",
+        "corejs": 2
+    }]
+]
+```
+编译后仅把需要的垫片require进来。
+举个栗子：
+
+```js
+const isHas = [1, 2, 3].includes(2);
+const p = new Promise((resolve, reject) => {
+    resolve(100);
+});
+```
+
+编译后：
+```js
+"use strict"
+require("core-js/modules/es.array.includes");
+require("core-js/modules.es.object.to-string");
+require("core-js/moduels/es.promise");
+// ...
+```
+
+
+#### Q: 会使用小的辅助函数实现一些公共方法，多次使用多次inject到文件，冗余？比如_creaeClass的_classCallCheck()?
+A: @babel/plugin-transform-runtime, 所有帮助程序都将引用模块@babel/runtime。
+@babel/plugin-transform-runtime: 开发依赖；
+@babel/rumtime: 生产依赖.
+即_classCallCheck函数不再是注入式，而是require自@babel/runtime， 消除冗余。
+
+
+Q: 以下的区别？
+* babel/runtime
+* babel/polyfill
+* babel/plugin-transform-runtime
+
