@@ -76,8 +76,8 @@ console.log(obj);
 
 // 解,push的原理
 Array.prototype.push = function(target) {
-  obj[target.length] = target;
-  obj.length++;
+  this[this.length] = target;
+  this.length++;
 }
 // obj[2] = c, length = 3
 // {"1": 'a', "2": 'c', length: 3}
