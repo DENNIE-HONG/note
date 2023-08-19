@@ -893,6 +893,25 @@ while(queue.length) {
 // 3. 通过_webpack_require执行相关模块代码
 ```
 
+```mermaid
+graph TB;
+
+
+hotModuleReplacementPlugin.js--将HotModuleReplacement运行代码注入到打包后文件中-->B[bundle.js];
+C[webpack]--plugin-->B;
+C--event-->webpackHotUpdate-->G[module.hot.check]-->hotDownloadManifest-->hotDownloadUpdateChunk-->apply;
+D[npm run dev]-->E[webpack-dev-server]--> C[webpack];
+C--compiler-->K[New Server];
+E-->K[New Server]--启动静态资源-->createServer--创建websocket连接-->createSocketServer--启动webpack监听-->setupDevMiddleware--约定钩子函数,监听编译结果-->setupHooks--webpack入口注入配置-->updateCompiler-->webpack-dev-server/client\nwebpack/hot/dev-server--注入-->bundle.js;
+
+L[webpack-dev-middleware]-->setupHooks;
+L--event emit-->webpackHotUpdate;
+setupDevMiddleware--依赖-->L;
+setupHooks--send'ok'-->webpack-dev-server/client;
+L-->watch((watch\n 编译/输出/监听))
+C-->watch;
+
+```
 
 
 
