@@ -2,6 +2,14 @@
 js编译器，涉及创建操作抽象语法树（AST）
 步骤：解析 ——> 转换 ——> 生成
 
+## Babel处理流程
+
+```mermaid
+graph TB;
+
+代码-->Tokenizer--词法分析,将源代码分割成Token数组-->Parser--语法分析,将Token数组数组转换成AST-->Traverser--遍历AST并应用转换器-->Transformer--AST转换器,增删查改AST节点-->Generator--代码生成,将AST转换成-->字符串形式代码 
+```
+
 #### 解析
 输出AST:
 * 词法分析；代码——> 令牌流
