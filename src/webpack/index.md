@@ -654,6 +654,251 @@ class Compiler extends Tapable {
 ```
 
 
+## 热更新
+### 编译过程
+第一次, hash值xxx123
+第二次：
+* 新hash：xxx256
+* 新json文件：xxx123.hot-update.json
+* 新js文件：index.xxx123.hot-update.js
+
+浏览器发出请求：
+* xxx123.hot-update.json
+* index.xxx123.hot-update.js
+
+json:
+* h: xxx56 (本次新hash)
+* c: {index: true} (更新文件对应index模块)
+
+### 热更新原理
+#### 1. 启动本地服务
+伪代码：
+```js
+// webpack-dev-server/bin/webpack-dev-server.js
+
+// ...
+try {
+    compiler = webpack(config);
+} catch(err) {
+    ...
+}
+try {
+    server = new Server(compiler, options, log);
+} catch(e) {
+    ...
+}
+
+// web-dev-server/lib/Server.js
+class Server {
+    constructor(compiler, options={}, _log) {
+        ...
+        this.setupApp();
+        ...
+        this.createServer();
+    }
+    setupApp() {
+        // 用了express
+        this.app = new express();
+    }
+    createServer() {
+        // 假设不用http2
+        this.listeningApp = http.createServer(this.app);
+    }
+    listen(port, hostname, fn) {
+        this.hostname = hostname;
+        return this.listenApp.listen(port, hostname, (err) => {
+            this.createSocketServer();
+            // 启动express后启动websocket服务
+        });
+    }
+}
+```
+
+1. 启动webpack， 生成compiler实例
+2. 使用express启动本地服务，可请求本地资源；
+3. 启动websocket服务，建立本地服务与浏览器的双向通信，当本地文件变化，通知浏览器可热更新了
+
+
+#### 2.修改webpack.config.js的entry配置
+* 获取websocket客户端代码路径；
+* webpack热更新代码路径；
+
+修改后entry：
+```js
+{
+    entry: {
+        index: [
+            // client Entry
+            'xxx/node-modules/webpack-dev-server/client/index.js?http://localhost:8080',
+            // hot Entry
+            // 检查更新逻辑
+            'xxx/node-modules/webpack/hot/dev-server.js',
+            './src/index.js'
+        ]
+    }
+}
+```
+多了webpack-dev-server/client/index.js
+即把websocket客户端代码偷偷塞到开发代码中。
+
+#### 3. 监听编译结束
+伪代码
+```js
+class Server {
+    ...
+    // 绑定监听事件
+    setupHooks() {
+        const addHooks = (compiler) => {
+            const {compile, invalid, done} = compiler.hooks;
+            ...
+            // 监听done钩子
+            done.tap('webpack-dev-server', (stats) => {
+                this._sendStats(this.sockets, this.getStats(stats));
+                this._stats = stats;
+            });
+        }
+        ...
+        addHooks(this.compiler);
+    }
+    // 通过websocket给客户端发消息
+    _sendStats(sockets, stats, force) {
+        ...
+        this.sockWrite(sockets, 'hash', stats.hash);
+        ...
+        this.sockWrite(sockets, 'ok');
+    }
+}
+```
+
+#### 4. 监听文件变化：setupDevMiddleware
+即webpack-dev-middleware  
+伪代码：
+
+```js
+// webpack-dev-middleware/index.js
+const content = createContext(compiler, options);
+// 通过“momory-fs”打包后写入内存
+setFs(context, compiler);
+// 添加一系列hooks
+context.compiler.hooks.run.tap('WebpackDevMiddleware.invalid');
+context.compiler.hooks.done.tap('WebpackDevMiddleware.done');
+context.compiler.hooks.watchRun.tap('WebpackDevMiddleware', (comp, callback) => {
+    invalid(callback);
+})
+```
+
+#### 5. 浏览器接收到热更新通知
+<font color="red">'xxx/node-modules/webpack-dev-server/client/index.js?http://localhost:8080'</font>  
+打包到bundle.js中，运行在浏览器中。伪代码：
+```js
+var socketMessage = {
+    ...
+    hash: function hash(_hash) {
+        status.currentHash = _hash;
+    }
+    ...
+    ok: function ok() {
+        sendMessage('ok');
+        // 进行更新检查等操作
+        reloadApp(options, status);
+    }
+}
+// 连接服务地址socketUrl
+socket(socketUrl, onSocketMessage);
+```
+
+
+<font color="red">'xxx/node-modules/webpack/hot/dev-server.js'</font>  
+同样打包到bundle.js中， 伪代码：
+
+```js
+if (module.hot) {
+    ...
+    var check = function check() {
+        module.hot.check(true)
+            .then(function(updateModule) {
+                // 容错，直到刷新页面
+                if (!updateModule) {
+                    ...
+                    window.location.reload();
+                    return;
+                }
+                // 热更新结束，打印信息
+                if (!lpToDetail()) {
+                    check();
+                }
+
+                ...
+            });
+    }
+    var hotEmitter = require('./emiter');
+    hotEmitter.on('webpackHotUpdate', function(currentHash) {
+        lastHash = currentHash;
+        check();
+    });
+}
+```
+
+#### 6. HotModuleReplacementPlugin
+多了 
+```js
+var module = installedModule[moduleId] = {
+    ...
+    hot: hotCreateModule(moduleId),
+    ...
+};
+```
+还是塞了很多代码在bundle.js中。
+
+#### 7. module.hot.check开始热更新
+* 利用上一次保存的hash，发送请求ajax；
+* 请求获取更新模块、下次hash；
+
+即通过jsonp，发送xxx/hash.hot-update.js请求获取的代码直接执行。
+
+```js
+window["webpackHotUpdate"] = function(chunkId, moreModules) {
+    hotAddUpdateChunk(chunkId, moreModuels);
+};
+
+function hotAddUpdateChunk(chunkId, moreModules) {
+    for (var moduleId in moreModules) {
+        if (Object.prototype.haSOwnProperty.call(moreModules, moduleId)) {
+            hotUpdate[moduleId] = moreModules[moduleId];
+        }
+    }
+    // 调用hotApply进行模块的替换
+    hotUpdateDownloadod();
+}
+```
+
+#### 8. hotApply热更替模块
+伪代码：
+
+```js
+// webpack/lib/HotModuleReplacement.runtime.js
+// 1. 删除过期模块
+var queue = outdateModule.slice();
+while(queue.length) {
+    moduleId = queue.pop();
+    module = installedModules[moduleId];
+    // 从缓存中删除过期模块
+    delete outdateDependencies[moduleId];
+    outdatedSelfAcceptedModules.push({
+        module: moduleId
+    });
+}
+
+// 2. 新模块添加到modules中
+// 3. 通过_webpack_require执行相关模块代码
+```
+
+
+
+
+
+
+
 ## 问题
 Q: webpackPrefetch、webpackPreload和webpackChunkName ？
 A: import文件时，以注释形式为chunk取别名。
