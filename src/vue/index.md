@@ -176,35 +176,21 @@ class Observe {
 3. 列表diff  
 更新：插入、移动、删除，设置key，调整diff更新排序，没有key只能按顺序进行对比。当key唯一稳定，diff的效率提高。
 
-```js
- ———————————————
-|被订阅者sertter|
-|______________|
-      |
- ______________
-|Dep.notify    |
- ——————————————
-      | 
- _______________________
-|patch(oldVnode, Vnode) |   
- ———————————————————————     
-         __|___________
-    ————| isSameVnode ?|————
-    |    ———————————————    |    
- ___|____              _____|____
-|replace |            |patchVnode|
- ————————              ——————————
- ____|________           |
-| return Vnode|          |
- —————————————           |———oldVnode有子节点
-                         |
-                         |———oldVnode没有子节点
-                         |
-                         |———都只有文本节点
-                         |
-                         |———都有子节点
 
+
+```mermaid
+graph TB;
+    被订阅者setter---Dep[Dep.notify]---Patch["Patch(oldVnode, Vnode)"]---S{isSameVnode};
+
+    S--Yes---patchVnode;
+    S--No---replace---r[return Vnode];
+
+    patchVnode---子[oldVnode有子节点\n Vnode没有];
+    patchVnode---v[oldVnode没有子节点\n Vnode有];
+    patchVnode---allno[都只有文本节点];
+    patchVnode---all[都有子节点];
 ```
+
 ### 伪代码
 ```js
 
