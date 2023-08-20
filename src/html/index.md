@@ -202,6 +202,24 @@ function checkPasswords() {
 }
 ```
 
+
+
+
+### output
+output:  计算or用户操作的结果
+```html
+
+<form oninput="x.value=parseInt(a.value) * parseInt(b.value)">
+    <input type="number" id="a"  value="0"/> *
+    <input type="number" id="b" value="0" /> =
+    <output name="x" for="ab"></output>
+</form>
+
+```
+
+
+
+
 ## 9. web storage
 ### localStorage
 基于LocalStorage设计一个1M的缓存系统，实现缓存淘汰机制？  
