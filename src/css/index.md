@@ -8,6 +8,64 @@
 
 
 ## 2. Flex
+
+### flex布局
+
+
+$$
+flex布局 
+\begin{cases}
+轴 
+\begin{cases}
+主轴 \\
+交叉轴\\
+\end{cases}
+
+\\ 容器
+\begin{cases}
+父容器 \\
+子容器 \\
+\end{cases}
+\end{cases}
+$$ 
+
+
+默认: 主轴从左向右；交叉轴垂直于主轴，逆时间90度。
+
+**justify-content**: 子元素在主轴方向上对齐方式。
+
+**align-items**: 子元素在交叉轴方向上的对齐方式。
+
+**align-selft**作用： 单独子容器的交叉轴排列
+
+比如：某个子容器位置靠上
+
+```mermaid
+graph TB;
+    A;
+    B;
+    C;
+    D;
+```
+
+**flex-flow**：
+$$
+flex-flow
+\begin{cases}
+flex-direction \\
+flex-wrap
+\end{cases}
+的简写
+$$
+
+
+
+
+
+
+
+
+
 ### flex-basis
 作用与width一样。
 在flex布局中，子项设置width无直接效果。
@@ -282,7 +340,7 @@ hyphens: auto;
 比如根据某个按钮的点击事件
 ```css
 .button:active::after {
-  content: url(./pixel.gif?action=click&id=button)
+  content: 'url(./pixel.gif?action=click&id=button)';
   display: none;
 }
 ```
@@ -334,7 +392,7 @@ a[href^="mailto:"] {
   background: url(email.png) no-repeat center right;
 }
 a[href$=".pdf"] {
-  ...
+  /*... */
 }
 ```
 
