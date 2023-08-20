@@ -12,22 +12,22 @@
 ### flex布局
 
 
-$$
-flex布局 
-\begin{cases}
-轴 
-\begin{cases}
-主轴 \\
-交叉轴\\
-\end{cases}
 
-\\ 容器
+$$
+flex布局
 \begin{cases}
-父容器 \\
-子容器 \\
+轴
+\begin{cases}
+主轴\\
+交叉轴
+\end{cases}
+\\容器
+\begin{cases}
+父容器\\
+子容器 
 \end{cases}
 \end{cases}
-$$ 
+$$
 
 
 默认: 主轴从左向右；交叉轴垂直于主轴，逆时间90度。

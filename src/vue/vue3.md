@@ -8,7 +8,7 @@
 * 暴露了自定义渲染API
 
 ## 特性
-### 性能
+### 更好的性能
 1. 编译模板的优化
 
 ```vue
@@ -80,3 +80,56 @@ render可返回数组了
 
 ### Teleport
 类似之前的`<portal>`
+
+
+### Composition API
+
+$$
+API
+\begin{cases}
+reactive \\
+watchEffect \\
+computed \\
+ref\\
+toRefs\\
+hooks
+\end{cases}
+$$
+
+举个栗子：
+```js
+import {reactive, computed} from 'vue';
+export default {
+    setup() {
+        const state = reactive({
+            a: 0
+        });
+        function increate() {
+            state: a++
+        }
+
+        return {
+            state,
+            increate
+        }
+    }
+}
+
+//...
+const double = computed(() => state.a + 3);
+```
+
+### 生命周期钩子对比
+
+
+| vue2.x | vue3.x |
+| -------|--------|
+|beforeCreate|setup|
+|created|setup|
+|beforeMount|onBeforeMount|
+|mounted|onMounted|
+|beforeUpdate|onBeforeUpdate|
+|updated|onUpdated|
+|beforeDestory|onBeforeUnmount|
+|destroyed|onUnmounted|
+|errCaptured|onErrorCaptured|
