@@ -181,6 +181,17 @@ let num: 1|2 = 1;
 type EventNames = 'click' | 'scroll' | 'mousemove';
 ```
 
+ts2.1 引入keyof操作符，返回类型是联合类型
+
+```ts
+interface Person {
+    name: string;
+    age: number;
+}
+type k = keyof Person; // "name" | "age"
+
+```
+
 #### 交叉类型
 通过&可将多种类型叠加到一起成为一种类型。
 
@@ -209,3 +220,114 @@ type Point = PartialPointX & {y: number};
     }
     ```
     2. 接口可以定义多次，自动合并为单个接口
+
+
+### 装饰器
+
+#### 类装饰器
+
+```ts
+declare type ClassDecorator = <T Function extends Function> (target: TFunction) => TFunction | void;
+
+function Greeter(target: Function): void {
+    target.prototype.greet = function(): void {
+        console.log("hello");
+    };
+}
+@Greeter
+class Greeting {
+    constructor() {
+        ...
+    }
+}
+
+let myGreeting = new Greeting();
+(myGreeting as any).greet(); // "hello"
+```
+
+
+#### 属性装饰器
+
+```ts
+function logProperty(target: any, key: string) {
+    delete target[key];
+    const backingField = "_" + key;
+    Object.definedProperty(target, backingField, {
+        writable: true,
+        enumerable: true,
+        configurable: true
+    });
+    // property getter
+    const getter = function(tshi: any) {
+        const currVal = this[backingField];
+        console.log(`Get: ${key} => ${currVal}`);
+        return currVal;
+    };
+    // property setter
+    const setter = function (this: any, newVal: any) {
+        console.log(`Set: ${key} => ${newVal}`);
+        this[backingField] = newVal;
+    };
+
+    Object.definedProperty(target, key, {
+        get: getter,
+        set: setter,
+        enumerable: true,
+        configurable: true
+    });
+}
+
+class Person {
+    @logProperty
+    public name: string;
+    // 定义了logProperty来跟踪用户对属性的操作
+    constructor(name: string) {
+        this.name = name;
+    }
+}
+
+const p1 = new Person("semlinber");
+p1.name = "kaku";
+// Set: name => semlinber
+// Set: name => kaku
+```
+
+
+#### 方法装饰器
+
+$$
+方法装饰器
+\begin{cases}
+target \\
+propertyKey \\
+descriptor
+\end{cases}
+$$
+
+```ts
+function log(target: Object, propertyKey: string, descriptor: PropertyDescriptor) {
+    let originalMethod = descriptor.value;
+    descriptor.value = function(...args: any[]) {
+        console.log("wrapped function: before");
+        let result = originalMethod.apply(this args);
+        console.log("wrapped function after");
+        return result;
+    }
+}
+
+class Task {
+    @log
+    runTask(arg: any):any {
+        console.log("runTask invoked.");
+        return "finished";
+    }
+}
+
+let task = new Task();
+let result = task.runTask("learn");
+console.log("result" + result);
+// wrapped function before
+// runTask invoked
+// wrapped function after
+// result finished
+```
