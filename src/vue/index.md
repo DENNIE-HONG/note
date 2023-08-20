@@ -468,6 +468,7 @@ function genElement(el, state) {
 
 
 ## 6. spa路由系统
+
 ### hash路由
 利用url的hash，hash值改变不会引起页面刷新，当url的hash改变，触发hashchange回调函数。
 ```js
@@ -541,6 +542,125 @@ class Router {
   }
 }
 ```
+
+
+### vue-router解析
+
+$$
+vue-router
+\begin{cases}
+1、 Vue.use(Router) 注册插件 \\
+2、 new Router(options) \\
+3、 new Vue({router, ...})   挂载
+\end{cases}
+$$
+
+
+
+#### 1. Vue.use(Router)
+部分源码：
+```js
+// 注册插件：执行插件的install方法，第一参数vue实例
+export function initUse(Vue: GlobalAPI) {
+    Vue.use = function(plugin: Funcion(Object)) {
+        const installedPlugins = (this._installedPlugins || (this._installedPlugins = []));
+        // 不重复复注册
+        if (installedPlugins.indexOf(plugin) > -1) {
+            return this;
+        }
+        // 获取第一个参数plugins以外参数
+        const args = toArray(arguments, 1);
+        // 将Vue实例添加到参数
+        args.unshift(this);
+        // 执行plugin的install方法，每个install方法第一个参数是vue实例
+        if (typeof plugin.install === 'function') {
+            plugin.install.apply(plugin, args);
+        } else if (typeof plugin === "function") {
+            plugin.apply(null, args);
+        }
+        // 保存在installedPlugins
+        installedPlugins.push(plugin);
+        return this;
+    }
+}
+```
+install.js 部分源码：
+```js
+// 保存Vue局部变量
+export let _Vue;
+export function install(Vue) {
+    // 如果已安装
+    if (install.installed && _Vue === Vue) {
+        return;
+    }
+    install.installed = true;
+    // 局部变量保存传入的Vue
+    _Vue = Vue;
+    const isDef = v => v !== undefined;
+    const registerInstance = (vm, callVal) => {
+        let i = vm.$options._parentVode;
+        if (isDef(i) && isDef(i = i.data) && isDef(i = registerRouteInstance)) {
+            i(vm.callVal);
+        }
+    }
+    // 全局混入钩子函数
+    Vue.mixin({
+        beforeCreate() {
+            if (isDef(this.$options.router)) {
+                // new Vue时传入的根组件router
+                // 根router
+                this._routerRoot = this;
+                this._router = this.$options.router;
+                this._router.init(this);
+                // 变响应式
+                Vue.util.defineReactive(this, '_route', this._router.history.current);
+            } else {
+                // 非根组件访问根组件通过parent
+                this._routerRoot = (this.$parent && this.$parent._routerRoot) || this;
+            }
+            reginsterInstance(this, this);
+        },
+        destroyed() {
+            reginsterInstance(this);
+        }
+    });
+
+    // 原型加入$router 和 $route
+    Object.defineProperty(Vue.prototype, '$router', {
+        get() {
+            return this._routerRoot._router;
+        }
+    });
+    Object.defineProperty(Vue.prototype, '$route', {
+        get() {
+            return this._routeRoot._route;
+        }
+    });
+    // 全局注册
+    Vue.component('RouterView', View);
+    Vue.component('RouerLink', Link);
+    // 获取合并策略
+    const strats = Vue.config.optionMergeStrategies;
+    ...
+}
+```
+思路：使用mixin将每个组件都混入beforeCreate、destroyed两个生命周期。
+
+
+```mermaid
+graph TD;
+router{router实例是否根组件};
+router--是-->A[_routerRoot: 组件实例 \n _router: VueRouter实例 \n init 初始化router \n 响应化]-->B["原型加入$router、$route"]-->E["注册RouterView、RouterLink"];
+
+router--否--> C["_routerRoot: $parent实例"];
+
+```
+
+;
+
+
+
+
 
 
 ## 7. 组件通信
