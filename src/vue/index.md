@@ -656,7 +656,77 @@ router--否--> C["_routerRoot: $parent实例"];
 
 ```
 
-;
+
+#### 2. new Router(options)
+部分源码：
+1. 确定当前路由使用的mode
+2. 实例化对应的history
+
+```js
+constructor(options: RouterOptions = {}) {
+    this.app = null;
+    this.apps = [];
+    this.options = options;
+    this.beforeHooks = [];
+    ...
+    this.matcher = createMatcher(options.routes || [], this);
+    // 一般分3种模式hash和history、抽象模式
+    let mode = options.mode || 'hash';
+    // 判断当前配置是否能用history模式
+    this.fallback = mode === 'history' && !suportsPushState && options.fallback !== false;
+    // 降级处理，退回hash
+    if (this.fallback) {
+        mode = 'hash';
+    }
+    if (!inBrowser) {
+        mode = 'abstract';
+    }
+    this.mode = mode;
+    // 根据模式实例化不同history
+    switch(mode) {
+        case 'history':
+            this.history = new HTML5History(this, options.base);
+            break;
+        case 'hash':
+            this.history = new HashHistory(this, options.base, this.fallback);
+            break;
+        case 'abstract':
+            this.history = new AbstractHistory(this, options.base);
+            break;
+        default:
+            if (process.env.NODE_ENV !== 'production') {
+                assert(false, `invalidmode：${mode}`);
+            }
+    }
+}
+```
+
+
+```js
+init(app: any) {
+    ...
+    this.apps.push(app);
+    if (this.app) {
+        return;
+    }
+    this.app = app;
+    const history = this.history;
+    // 调用transitionTo进行路由过滤
+    if (history instanceof HTML5History) {
+        history.transitionTo(history.getCurrentLocation());
+    } else if (history instanceof HashHistory) {
+        const setupHashListener = () => {
+            history.setupListener();
+        }
+        history.transitionTo(history.getCurrentLocation(), 
+        setupHashListener,
+        setupHashListener);
+    }
+}
+// this.history去调用transitionTo进行路由过滤，
+// 这个函数调用了this.matcher.match去匹配
+```
+
 
 
 
