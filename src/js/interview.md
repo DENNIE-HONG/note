@@ -18,7 +18,7 @@ String.prototype.repeact = function(n) {
 ## 介绍模块化？
 例如有3个模块，a引用了b、c，a模块打印了‘aaa’，c模块打印了‘cccc’
 ### 1. commonjs
-用module.exports 定义当前模块对外输出接口，用require加载模块，同步方式加载模块。
+用module.exports 定义当前模块对外输出接口，用require加载模块，**同步方式**加载模块。
 执行:
 ```js
 加载了a；
@@ -38,7 +38,7 @@ require(['jquery', 'math'], function($, math) {
 });
 
 ```
-采用异步加载，模块加载不影响后续语句，等加载完才运行回调函数。
+采用**异步加载**，模块加载不影响后续语句，等加载完才运行回调函数。
 执行：
 ```js
 加载了a、加载了b、加载模块c
@@ -307,68 +307,53 @@ cloneForce(a); // 没报错，破解循环引用
 ## 如何实现Event库(发布订阅模式)
 ```js
 class EventEmeitter {
-  constructor() {
-    this._events = this._events || new Map();
-    this._maxListeners = this._maxListeners || 10;
+    constructor() {
+        this._events = this._events || new Map();
+        this._maxListeners = this._maxListeners || 10;
+    }
+
+    emit (type, ...args) {
+        let handlers = this._events.get(type);
+        if (!handers) {
+            return false;
+        }
+        for (let i = 0; i < handlers.length; i++) {
+            if (args.length > 0) {
+                handlers[i].apply(this, args);
+            } else {
+                handlers[i].call(this);
+            }
+        }
+        return true;
   }
 
-  emit (type, ...args) {
-    let handler;
-    handler = this._events.get(type);
-    if (Array.isArray(handler)) {
-      for (let i = 0; i < handler.length; i++) {
-        if (args.length > 0) {
-          handler[i].apply(this, args);
+    addListener (type, fn) {
+        const handlers = this._events.get(type);
+        if (!handllers) {
+            this._events.set(type, [fn]);
         } else {
-          handler[i].call(this);
-        }
-      }
-    } else {
-         if (args.length > 0) {
-          handler[i].apply(this, args);
-        } else {
-          handler[i].call(this);
+            handlers.push(fn);
+            this._events.set(type, handlers);
         }
     }
-    return true;
-  }
 
-  addListener (type, fn) {
-    const handler = this._events.get(type);
-    if (!handller) {
-      this._events.set(type, fn);
-    } else if (handler && typeof handler === 'function') {
-      this._events.set(type, [handler, fn])
-    } else {
-      handler.push(fn);
-    }
-  }
-
-  removeListener(type, fn) {
-    const handler = this._events.get(type);
-    if (hander && typeof handler === 'function') {
-      this._events.delete(type, fn);
-    } else {
-      let position;
-      for (let i = 0; i < handler.length; i++) {
-        if (hander[i] === fn) {
-          position = i;
-        } else {
-          position = -1;
+    removeListener(type, fn) {
+        const handlers = this._events.get(type);
+        if (!handlers) {
+            return;
         }
-      }
+        let position = -1;
+        for (let i = 0; i < handler.length; i++) {
+            if (handers[i] === fn) {
+                position = i;
+                break;
+            }
+        }
+        if (position !== -1) {
+            handlers.splice(position, 1);
+        }
     }
-    if (position !== -1) {
-      handler.splice(position, 1);
-      // 清除后只有一个函数，以函数形式保存
-      if (handler.length === 1) {
-        this._event.set(type, handler[0]);
-      }
-    } else {
-      return this;
-    }
-  }
- }
+}
 ```
 
 ## 前端注意哪些SEO?
