@@ -729,6 +729,129 @@ init(app: any) {
 
 
 
+$$
+Matcher
+\begin{cases}
+createRouteMap: 生成pathMap、nameMap、pathList \\
+addRoutes: 生成动态路由 \\
+match: 传入的raw和currentRoute, 返回新路径
+\end{cases}
+$$
+
+```js
+export function createMatcher(
+    routes: Array<RoueConfig>
+    router: VueRouter
+)： Matcher {
+    // 创建映射表
+    const {pathList, pathMap, nameMap} = createRouteMap(routes);
+    // 动态路由
+    function addRoutes(routes) {
+        ...
+    }
+    // 计算新路径
+    function match(
+        raw: RawLocation,
+        currentRoute?: Route,
+        redirectedFrom?: Location
+    ): Route {
+        ...
+
+    }
+    return {
+            match,
+            addRoutes
+    };
+}
+
+
+function createRouteMap(
+    routes: Array<RouteConfig>,
+    oldPathList?: Array<string>,
+    oldPathMap?: Dictionary<RouteRecord>,
+    oldNameMap?: Dictionary<RouteRecord>
+): {
+    pathList: Array<string>,
+    pathMap: Dictionary<RouteRecord>,
+    nameMap: Dictionary<RouteRecord>
+} {
+    // 记录所有path
+    const pathList: Array<string> = oldPathList || [];
+    // 记录path-Record map
+    const pathMap: Dictionary<RouteRecord> = oldPathMap || object.create(null);
+    const nameMap: Dictionary<RouteRecord> = oldNameMap || object.create(null);
+    // 遍历route生成映射表
+    routes.forEach(route => {
+        addRoueRecord(pathList, pathMap, nameMap, route);
+    });
+    // 调整优先级
+    for (let i = 0, l = pathList.length; i < l; i++) {
+        if (pathList[i] === "*") {
+            pathList.push(pathList.splice(i, 1)[0]);
+            l--;
+            i--;
+        }
+    }
+    return {
+        pathList,
+        pathMap,
+        nameMap
+    }
+}
+
+
+```
+
+addRouteRecord部分源码：
+
+```js
+// 解析路径
+const pathToRegexpOptions : PathToRegexpOptions = route.pathToRegexpOptions || {};
+// 拼接路径
+const normalizePath = normalizePath(path, parent, pathToRegexpOptions.strict);
+// 记录路由信息的关键对象
+// 依此建映射表
+const record: RouteRecord = {
+    path: normalizePath,
+    regex: compileRouteRegex(normalizedPath, pathToRegexpOptions),
+    // routes对应组件
+    components: route.components || {default: route.component},
+    // 组件实例
+    instances: {},
+    name,
+    parent,
+    matchAs,
+    redirect: route.redirect,
+    beforeEnter: route.beforeEnter,
+    meta: route.meta || {},
+    props: route.props == null ? 
+        {} : route.components ? 
+            route.props 
+        : {default: route.props}
+}
+
+// 再将record path保存进pathList、nameMap
+if (!pathMap[record.path]) {
+    pathList.psuh(record.path);
+    pathMap[record.path] = record;
+}
+```
+
+
+```mermaid
+graph TB;
+
+V["Vue.use(Router)(Vue.use(plugin))"]-->install["installPlugin保存 \n plugin.install(vue实例)"]-->installjs["Vue-Router的install.js \n 1. Vue.mixin({ \n     #nbsp;#nbsp;beforeCreate() {...} \n       #nbsp; destroy() {...} \n }); \n 2. VueRouter实例对象响应化 \n 3. Vue.prototype加入$router、$route \n 4. 注册RouterView、Router Link "]-->n["new Router(options)"]-->Matcher["1. createMatcher(routes) \n 2. 确定mode\n 3. new 实例化history对象"];
+
+installjs-->router实例的init方法-->拿到history实例调用transitionTo进行路由过度-->this["this.matcher.match()方法匹配"]-->根据传入的raw和当前路径crrrentRoute,返回新的路径;
+
+Matcher-->createRoute["createRouteMap(routes)返回 match方法和addRoutes"]-->遍历routes调用addRouteRecord方法-->record["创建record对象 \n pathList: [所有path] \n pathMap: {path: record} \n nameMap: {name: record}"]
+
+style installjs text-align: left;
+style Matcher text-align: left;
+
+```
+
 
 
 
@@ -737,6 +860,10 @@ init(app: any) {
 1. props：
 子组件显示定义好从父组件接收的数据，父组件通过v-bind传递数据；  
 不可直接改变子组件中的prop属性（单向传递）
+
+优点： 简单灵活；  
+缺点： props篡改（引用类型），跨层级通信、兄弟组件通信困难；
+
 2. v-on、$emit：
 父组件可在使用子组件模板用v-on来监听子组件触发的事件；
 3. v-model：
@@ -806,3 +933,6 @@ create() {
   });
 }
 ```
+
+优点：父子兄弟通信不受限制；
+缺点：维护困难，谨小慎微命令规范、不利于组件化；
