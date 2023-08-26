@@ -137,6 +137,7 @@ const double = computed(() => state.a + 3);
 
 ## 2. 响应式原理
 
+### reactive
 Proxy：
 1. 对属性的添加、删除动作的监听；
 2. 对数组基于下标的修改，length修改的检测；
@@ -216,5 +217,146 @@ isSet--"否(baseHandlers)"--->Proxy;
 Proxy-->isRead{是否只读};
 isRead--是-->A[rawToReadonly\n readonlyToRaw\n 收集];
 isRead--否-->B[rawReactive \n reactiveToRaw \n 收集]
+
+```
+
+### effect
+watcher(2.0) => effect(3.0)
+
+```js
+const mountComponent: MountComponentFn = (
+    initialVNode,
+    container,
+    anchor,
+    parentComponent,
+    parentSuspense,
+    isSVG,
+    optimized
+) => {
+    const instance: ComponentIntervalInstance = (initialVNode.component = createComponentInstance(
+        initialVNode,
+        parentComponent,
+        parentSuspense
+    ));
+    // 建立proxy
+    setupComponent(instance);
+    // 建立渲染effect，执行effect
+    setupRenderEffect(
+        instance, // 组件实例
+        initialVNode,
+        container,
+        achor,
+        parentSuspense,
+        isSVG,
+        optimized
+    );
+}
+```
+
+1. 创建component实例；
+2. 初始化组件，建立proxy， 得到render函数；
+3. 建立一个effect，执行effect；
+
+```js
+// 构建渲染effect
+const setupRenderEffect: setupRenderEffectFn = (
+    instance,
+    initialVNode,
+    container,
+    achor,
+    parentSuspense,
+    isSVG,
+    optimized
+) => {
+    instance.update = effect(function componentEffect() {
+        // ...
+    }, {scheduler, queueJob});
+}
+```
+创建一个effect，赋给组件实例的update，作为渲染更新视图用。
+
+```js
+export function effect<T = ant>(
+    fn: v => T,
+    options: ReactiveEffectOptions = EMPTY_OBJ
+): ReactiveEffect<T> {
+    const effect = createReactiveEffect(fn, options);
+    if (!options.lazy) {
+        effect();
+    }
+    return effect;
+}
+
+function createReativeEffect<T = any>(
+    fn: (...args: any[]) => T,
+    options: ReativeEffectOptions
+): ReactiveEffect<T> {
+    const effect = function reativeEffect(...args: unknow[]): unkonw {
+        try {
+            enableTracking();
+            effectStack.push(effect);
+            activeEffect = effect;
+            return fn(...args);
+        } finally {
+            effectStack.pop();
+            resetTracking();
+            // 将activeEffect还原
+            activeEffect = effectStack[effectStack.length - 1];
+        } as ReactiveEffect
+        // 初始化参数
+        effect.id = uid++;
+        effect._isEffect = true;
+        effect.active = true;
+        effect.raw = fn;
+        effect.deps = []; // 收集相关依赖
+        effect.options = options;
+        return effect;
+    }
+}
+```
+组件初始化阶段
+```mermaid
+graph TB;
+初始化mountComponent-->createComponentInstance创建组件实例-->setupC["setupComponent创建组件，调用composition-api\n 处理options（构建响应式），编译template"]-->setupR[setupRenderEffect创建一个渲染effect]---r23["reactiveEffect: effect初始化创建一个reactiveEffect"]-->A["不是lazy情况,立即执行effect函数 \n 将当前effect赋给activeEffect"];
+
+setupC--reactive产生-->proxy响应式;
+setupR--effect创建-->renderEffect-->activeEffect;
+
+A--立即执行-->renderEffect;
+
+```
+
+
+vue2.0, 响应式在初始化就深层递归处理；  
+vue3.0, 获取上一级get之后才触发下一级的深度响应；
+
+### track
+track, 找到与当前proxy和key对应的dep，dep与当前activeEffect建立里联系，收集依赖。
+
+依赖收集器：
+* targetMap：proxy：depsMapproxy，存放依赖dep的map映射；
+* depsMap: deps存放effect的set数据类型
+
+<font color="red">依赖收集，get做了什么？</font>
+
+```mermaid
+flowchart TB;
+start["Reflect.get获取属性"]-->isShallow{是否浅响应};
+
+isShallow--是-->isShallowRead{是否只读};
+isShallow--否-->isRead{是否只读};
+
+isShallowRead--是-->返回res;
+isShallowRead--否-->track响应式-->返回res了;
+
+isRead--是-->isObject{是否引用类型};
+isRead--否---t[tranck响应式]-->isObject;
+
+isObject--是-->readonly{是否只读属性};
+isObject--否-->C[返回res];
+
+readonly--是-->A["深度响应式readonly(res)"];
+readonly--否-->B["深度响应式reactive(res)"];
+
 
 ```
