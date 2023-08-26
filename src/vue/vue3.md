@@ -7,7 +7,7 @@
 * 更好的ts支持
 * 暴露了自定义渲染API
 
-## 特性
+## 1. 特性
 ### 更好的性能
 1. 编译模板的优化
 
@@ -133,3 +133,88 @@ const double = computed(() => state.a + 3);
 |beforeDestory|onBeforeUnmount|
 |destroyed|onUnmounted|
 |errCaptured|onErrorCaptured|
+
+
+## 2. 响应式原理
+
+Proxy：
+1. 对属性的添加、删除动作的监听；
+2. 对数组基于下标的修改，length修改的检测；
+3. 对Map、Set、WeakMap、WeakSet支持；
+
+建立响应式reactive:
+
+$$
+reactive 
+\begin{cases}
+reactive, 返回proxy对象，有递归 \\
+shalllowReactive, 只一层响应 \\
+readonly: 不可修改 \\
+shallowReadonly
+\end{cases}
+$$
+
+部分源码：
+```js
+export function reactive(target: object) {
+    if (readonlyToRaw.has(target)) {
+        return target;
+    }
+    return createReactiveObject({
+        target,
+        rawToReactive,
+        reactiveToRaw,
+        mutableHandlers, // 处理基于类型和引用类型，
+        mutableCollectionHandlers // 处理set、map等类型
+    });
+}
+
+```
+
+```js
+const collectionTypes = new Set<Function>([Set, Map, WeakMap, WeakSet]);
+
+function createReactiveObject() {
+    target: unknow,
+    toProxy: WeakMap<any, any>,
+    toRaw: WeakMap<any, any>,
+    baseHandlers: ProxyHandler<any>,
+    collectionLHandlers: ProxyHander<any>
+} {
+    // 目标对象是否被effect
+    let observed = toProxy.get(target);
+    if (observed !== void 0) {
+        return observed;
+    }
+    if (toRaw.has(target)) {
+        return target;
+    }
+    const handlers = collectionTypes.has(target.constructor) ? collectionHanders: baseHanders;
+    // 创建响应式对象
+    observed = new Proxy(target, handlers);
+    toProxy.set(target, observed);
+    toRaw.set(observed, target);
+    return observed;
+}
+```
+
+```mermaid
+flowchart TB;
+
+shallowReactive---CreateReactiveObject;
+reactive---CreateReactiveObject;
+readonly---CreateReactiveObject;
+shallowReadonly---CreateReactiveObject;
+
+CreateReactiveObject---s{是否已proxy};
+s--是-->返回observed;
+s--否-->isSet{"是否是Set、Map、WeakSet、WeakMap类型"};
+
+isSet--"是(collection)"-->Proxy[New Proxy];
+isSet--"否(baseHandlers)"--->Proxy;
+
+Proxy-->isRead{是否只读};
+isRead--是-->A[rawToReadonly\n readonlyToRaw\n 收集];
+isRead--否-->B[rawReactive \n reactiveToRaw \n 收集]
+
+```
