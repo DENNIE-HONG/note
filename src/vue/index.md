@@ -1030,14 +1030,14 @@ flowchart LR
     oldN-->新chidlren有多个-->添加多个新
 ```
 
-----------------------
+----------------------------
 
 
 ```mermaid
 flowchart LR
     oldM[旧children多个节点] --> 新children只一个-->移除旧,将新的添加
     oldM-->新children无子节点--> 旧的多个移除
-    oldM-->新chidlren有多个--> A[核心diff,同层级比较#9829;]
+    oldM-->新chidlren有多个--> A[核心diff,同层级比较]
 ```
 
 
