@@ -9,7 +9,18 @@
 
 ## 1. 特性
 ### 更好的性能
-1. 编译模板的优化
+compiler优化细节：
+#### 1. 靶向更新
+
+$$
+靶向更新
+\begin{cases}
+BlockTree \\
+PatchFlags
+\end{cases}
+$$
+
+思路：跳过静态内容，只对比动态内容。
 
 ```vue
 <div>
@@ -36,7 +47,72 @@ export function render(_ctx, _code) {
 9 /* Text, Props */ 既有Text变化，又有props变化
 ```
 
-2. 事件监听缓存：cacheHandlers
+##### Block 
+VNode, 带有dynamicChildren，避免传统diff(一层一层遍历)，更新准确知道该节点应用哪些更新动作（靶向更新）。
+
+1. v-if的元素是作为Block
+Block（DIV）
+    --Block(Section v-if)
+    --Block(Section v-else)
+
+
+```js
+const block = {
+    tag: 'div',
+    dynamicChildren: [
+        {   tag: 'section', {key: 0},
+            dynamicChildren: [...]
+        },
+        {
+            tag: 'section', {key: 1},
+            dynamicChildren: [...]
+        }   
+    ]
+}
+```
+BlockTree => Dom结构不稳定；
+
+2. v-for的元素作为Block
+使用一个Fragment充当Block角色。但是仍面临不稳定，回退到传统diff。当v-for的表达式是常量，Fragment是稳定的。
+
+#### 2. 提升静态节点
+举个栗子
+
+```vue
+<div>
+    <p>text</p>
+</div>
+```
+```js
+const hoist1 = createVNode('p', null, 'text');
+function render() {
+    return (openBlock(), createBlock('div', null, [hoist1]));
+}
+```
+
+
+#### 3. 预字符串化
+静态节点序列化为字符串并生成一个static类型的VNode。
+
+```js
+const hoistStatic = createStaticVNode('<p></p><p>...</p>');
+
+render() {
+    return(openBlock(), createBlock('div', null, [
+        hoistStatic
+    ]));
+}
+```
+优点：
+* 生成代码体积减少；
+* 减少创建VNode开销；
+* 减少内存占用；
+
+
+
+
+
+#### 4. 事件监听缓存：cacheHandlers
 
 ```vue
 <div>
