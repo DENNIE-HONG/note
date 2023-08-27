@@ -360,3 +360,104 @@ readonly--否-->B["深度响应式reactive(res)"];
 
 
 ```
+
+
+
+**依赖收集阶段**
+
+```mermaid
+graph TD;
+
+    reactive["reactive()"]-->proxy;
+    proxy-->set;
+    proxy-->get-->track--通过target和key2层映射建立dep-->dep[找到对应dep];
+
+    effect["effect()"]-->renderEffect-->rt[renderComponentRoot \n 触发render方法]-->D[解析表达式，替换真实data \n 下的属性，触发get];
+
+    D--触发get-->get;
+    renderEffect<--"建立双向关联\n 将当前renderEffect存入dep中\n 将dep存入当前effect的deps中"-->dep;
+
+
+```
+
+
+
+
+
+1. 执行renderEffect，赋值给activeEffect，调用renderComponentRoot，触发render函数；
+2. 根据render函数，解析经过compile，语法树处理后模板表达式，访问真实data属性，触发get；
+3. get方法首先经过之前不同reactive，通过track方法进行依赖收集；
+4. track方法通过当前proxy对象target、key找对应的dep；
+5. 将dep与当前reactiveEffect建立起联系，将activeEffect压入dep数组中，dep中已含有当前组件的渲染effect，触发set，能在数组中找到对应effect，依次执行。
+
+
+#### set触发更新流程
+
+```mermaid
+flowchart TB
+    start["this[key]=value \n 改变属性"]--触发-->set
+
+    Proxy-->get
+    Proxy-->set-->trigger-->fen[分离effect和\n computed]--依次-->isScheduler{需要scheduler}
+
+    isScheduler--是-->放入scheduler调度
+    isScheduler--否-->执行fn
+
+    subgraph targetMaps
+        subgraph depMaps
+            deps
+        end
+    end
+    
+
+    deps-->fen
+    trigger--"通过proxy和key \n 找到对应deps"-->deps
+
+
+```
+
+```js
+export function trigger(
+    target: object,
+    type: TrrigerOpTypes,
+    key?:unknow,
+    newValue?:unknow,
+    oldValue?: unknow,
+    oldTarget ?: Map<unknow, unknow> | Set<unkoow>
+) {
+    const depsMap = targetMap.get(target);
+    // 没有经过依赖收集的，直接返回
+    if (!depsMap) {
+        return;
+    }
+    // 钩子队列
+    const effects = new Set<ReactiveEffect>(); 
+    // 计算属性队列
+    const computedRunners = new Set<ReactiveEffect>();
+    const add = (effectsToAdd: Set<ReactiveEffect> | undefined) => {
+        if (effectsToAdd) {
+            effectsToAdd.forEach(effect=> {
+                if (effect !== activeEffect || !shouldTrack) {
+                    if (effect.options.computed) {
+                        computedRunners.add(effect);
+                    } else {
+                        effects.add(effect);
+                    }
+                }
+            });
+        }
+    }
+    add(depsMap.get(key));
+    const run = (effect: ReactiveEffect) => {
+        if (effect.options.scheduler) {
+            effect.options.scheduler(effect);
+        } else {
+            effect();
+        }
+    }
+    // 必须首先运行计算属性更新
+    computedRunners.forEach(run); // 依次执行回调
+    effects.forEach(run);
+
+}
+```
