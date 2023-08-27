@@ -467,396 +467,8 @@ function genElement(el, state) {
 ```
 
 
-## 6. spa路由系统
 
-### hash路由
-利用url的hash，hash值改变不会引起页面刷新，当url的hash改变，触发hashchange回调函数。
-```js
-// 伪代码
-class Router {
-  construtor() {
-    this.routers = {};
-    this.currentUrl = '';
-  }
-  route(path, callback) {
-    this.routes[path] = callback || function () {};
-  }
-  updateView() {
-    this.currentUrl = location.hash.slice(1) || '/';
-    this.routes[this.currentUrl] && this.routes[this.currentUrl](); 
-
-  }
-
-  init() {
-    window.addEventListener('load', this.updateView.bind(this), false);
-    window.addEventListener('hashchange', this.updateView.bind(this), false);
-  }
-}
-// 调用
-const router = new Router();
-router.init();
-router.route('/id', () => {});
-```
-
-### History路由
-罗列出所有可触发history改变的情况，并且将这些方式一一拦截，监听history变化。
-url改变：
-* 点击a标签
-* history.push(replace)State函数
-
-```js
-class Router {
-  constructor() {
-    this.routes = [];
-    this.currentUrl = '';
-  }
-  route(path, callback) {
-    ...
-  }
-  updateView(url) {
-    this.currentUrl = url;
-    this.routes[url] && this.routes[url]();
-  }
-
-  bindLink() {
-    const allLink = document.querySelectorAll('a[data-href]');
-    for (let i = 0; i < allLink.length; i++) {
-      const current = allLink[i];
-      current.addEventListener('click', e => {
-        e.preventDefault();
-        const url = current.getAttriute('data-href');
-        history.pushState({}, null, url);
-        this.updateView(url);
-      }, false);
-    }
-  }
-
-  init() {
-    this.bindLink();
-    window.addEventListener('popstate', (e) => {
-      this.updateView(window.location.pathname);
-    });
-    window.addEventListener('load', () => {
-      this.updateView('/');
-    }, false);
-  }
-}
-```
-
-
-### vue-router解析
-
-$$
-vue-router
-\begin{cases}
-1、 Vue.use(Router) 注册插件 \\
-2、 new Router(options) \\
-3、 new Vue({router, ...})   挂载
-\end{cases}
-$$
-
-
-
-#### 1. Vue.use(Router)
-部分源码：
-```js
-// 注册插件：执行插件的install方法，第一参数vue实例
-export function initUse(Vue: GlobalAPI) {
-    Vue.use = function(plugin: Funcion(Object)) {
-        const installedPlugins = (this._installedPlugins || (this._installedPlugins = []));
-        // 不重复复注册
-        if (installedPlugins.indexOf(plugin) > -1) {
-            return this;
-        }
-        // 获取第一个参数plugins以外参数
-        const args = toArray(arguments, 1);
-        // 将Vue实例添加到参数
-        args.unshift(this);
-        // 执行plugin的install方法，每个install方法第一个参数是vue实例
-        if (typeof plugin.install === 'function') {
-            plugin.install.apply(plugin, args);
-        } else if (typeof plugin === "function") {
-            plugin.apply(null, args);
-        }
-        // 保存在installedPlugins
-        installedPlugins.push(plugin);
-        return this;
-    }
-}
-```
-install.js 部分源码：
-```js
-// 保存Vue局部变量
-export let _Vue;
-export function install(Vue) {
-    // 如果已安装
-    if (install.installed && _Vue === Vue) {
-        return;
-    }
-    install.installed = true;
-    // 局部变量保存传入的Vue
-    _Vue = Vue;
-    const isDef = v => v !== undefined;
-    const registerInstance = (vm, callVal) => {
-        let i = vm.$options._parentVode;
-        if (isDef(i) && isDef(i = i.data) && isDef(i = registerRouteInstance)) {
-            i(vm.callVal);
-        }
-    }
-    // 全局混入钩子函数
-    Vue.mixin({
-        beforeCreate() {
-            if (isDef(this.$options.router)) {
-                // new Vue时传入的根组件router
-                // 根router
-                this._routerRoot = this;
-                this._router = this.$options.router;
-                this._router.init(this);
-                // 变响应式
-                Vue.util.defineReactive(this, '_route', this._router.history.current);
-            } else {
-                // 非根组件访问根组件通过parent
-                this._routerRoot = (this.$parent && this.$parent._routerRoot) || this;
-            }
-            reginsterInstance(this, this);
-        },
-        destroyed() {
-            reginsterInstance(this);
-        }
-    });
-
-    // 原型加入$router 和 $route
-    Object.defineProperty(Vue.prototype, '$router', {
-        get() {
-            return this._routerRoot._router;
-        }
-    });
-    Object.defineProperty(Vue.prototype, '$route', {
-        get() {
-            return this._routeRoot._route;
-        }
-    });
-    // 全局注册
-    Vue.component('RouterView', View);
-    Vue.component('RouerLink', Link);
-    // 获取合并策略
-    const strats = Vue.config.optionMergeStrategies;
-    ...
-}
-```
-思路：使用mixin将每个组件都混入beforeCreate、destroyed两个生命周期。
-
-
-```mermaid
-graph TD;
-router{router实例是否根组件};
-router--是-->A[_routerRoot: 组件实例 \n _router: VueRouter实例 \n init 初始化router \n 响应化]-->B["原型加入$router、$route"]-->E["注册RouterView、RouterLink"];
-
-router--否--> C["_routerRoot: $parent实例"];
-
-```
-
-
-#### 2. new Router(options)
-部分源码：
-1. 确定当前路由使用的mode
-2. 实例化对应的history
-
-```js
-constructor(options: RouterOptions = {}) {
-    this.app = null;
-    this.apps = [];
-    this.options = options;
-    this.beforeHooks = [];
-    ...
-    this.matcher = createMatcher(options.routes || [], this);
-    // 一般分3种模式hash和history、抽象模式
-    let mode = options.mode || 'hash';
-    // 判断当前配置是否能用history模式
-    this.fallback = mode === 'history' && !suportsPushState && options.fallback !== false;
-    // 降级处理，退回hash
-    if (this.fallback) {
-        mode = 'hash';
-    }
-    if (!inBrowser) {
-        mode = 'abstract';
-    }
-    this.mode = mode;
-    // 根据模式实例化不同history
-    switch(mode) {
-        case 'history':
-            this.history = new HTML5History(this, options.base);
-            break;
-        case 'hash':
-            this.history = new HashHistory(this, options.base, this.fallback);
-            break;
-        case 'abstract':
-            this.history = new AbstractHistory(this, options.base);
-            break;
-        default:
-            if (process.env.NODE_ENV !== 'production') {
-                assert(false, `invalidmode：${mode}`);
-            }
-    }
-}
-```
-
-
-```js
-init(app: any) {
-    ...
-    this.apps.push(app);
-    if (this.app) {
-        return;
-    }
-    this.app = app;
-    const history = this.history;
-    // 调用transitionTo进行路由过滤
-    if (history instanceof HTML5History) {
-        history.transitionTo(history.getCurrentLocation());
-    } else if (history instanceof HashHistory) {
-        const setupHashListener = () => {
-            history.setupListener();
-        }
-        history.transitionTo(history.getCurrentLocation(), 
-        setupHashListener,
-        setupHashListener);
-    }
-}
-// this.history去调用transitionTo进行路由过滤，
-// 这个函数调用了this.matcher.match去匹配
-```
-
-
-
-$$
-Matcher
-\begin{cases}
-createRouteMap: 生成pathMap、nameMap、pathList \\
-addRoutes: 生成动态路由 \\
-match: 传入的raw和currentRoute, 返回新路径
-\end{cases}
-$$
-
-```js
-export function createMatcher(
-    routes: Array<RoueConfig>
-    router: VueRouter
-)： Matcher {
-    // 创建映射表
-    const {pathList, pathMap, nameMap} = createRouteMap(routes);
-    // 动态路由
-    function addRoutes(routes) {
-        ...
-    }
-    // 计算新路径
-    function match(
-        raw: RawLocation,
-        currentRoute?: Route,
-        redirectedFrom?: Location
-    ): Route {
-        ...
-
-    }
-    return {
-            match,
-            addRoutes
-    };
-}
-
-
-function createRouteMap(
-    routes: Array<RouteConfig>,
-    oldPathList?: Array<string>,
-    oldPathMap?: Dictionary<RouteRecord>,
-    oldNameMap?: Dictionary<RouteRecord>
-): {
-    pathList: Array<string>,
-    pathMap: Dictionary<RouteRecord>,
-    nameMap: Dictionary<RouteRecord>
-} {
-    // 记录所有path
-    const pathList: Array<string> = oldPathList || [];
-    // 记录path-Record map
-    const pathMap: Dictionary<RouteRecord> = oldPathMap || object.create(null);
-    const nameMap: Dictionary<RouteRecord> = oldNameMap || object.create(null);
-    // 遍历route生成映射表
-    routes.forEach(route => {
-        addRoueRecord(pathList, pathMap, nameMap, route);
-    });
-    // 调整优先级
-    for (let i = 0, l = pathList.length; i < l; i++) {
-        if (pathList[i] === "*") {
-            pathList.push(pathList.splice(i, 1)[0]);
-            l--;
-            i--;
-        }
-    }
-    return {
-        pathList,
-        pathMap,
-        nameMap
-    }
-}
-
-
-```
-
-addRouteRecord部分源码：
-
-```js
-// 解析路径
-const pathToRegexpOptions : PathToRegexpOptions = route.pathToRegexpOptions || {};
-// 拼接路径
-const normalizePath = normalizePath(path, parent, pathToRegexpOptions.strict);
-// 记录路由信息的关键对象
-// 依此建映射表
-const record: RouteRecord = {
-    path: normalizePath,
-    regex: compileRouteRegex(normalizedPath, pathToRegexpOptions),
-    // routes对应组件
-    components: route.components || {default: route.component},
-    // 组件实例
-    instances: {},
-    name,
-    parent,
-    matchAs,
-    redirect: route.redirect,
-    beforeEnter: route.beforeEnter,
-    meta: route.meta || {},
-    props: route.props == null ? 
-        {} : route.components ? 
-            route.props 
-        : {default: route.props}
-}
-
-// 再将record path保存进pathList、nameMap
-if (!pathMap[record.path]) {
-    pathList.psuh(record.path);
-    pathMap[record.path] = record;
-}
-```
-
-
-```mermaid
-graph TB;
-
-V["Vue.use(Router)(Vue.use(plugin))"]-->install["installPlugin保存 \n plugin.install(vue实例)"]-->installjs["Vue-Router的install.js \n 1. Vue.mixin({ \n     #nbsp;#nbsp;beforeCreate() {...} \n       #nbsp; destroy() {...} \n }); \n 2. VueRouter实例对象响应化 \n 3. Vue.prototype加入$router、$route \n 4. 注册RouterView、Router Link "]-->n["new Router(options)"]-->Matcher["1. createMatcher(routes) \n 2. 确定mode\n 3. new 实例化history对象"];
-
-installjs-->router实例的init方法-->拿到history实例调用transitionTo进行路由过度-->this["this.matcher.match()方法匹配"]-->根据传入的raw和当前路径crrrentRoute,返回新的路径;
-
-Matcher-->createRoute["createRouteMap(routes)返回 match方法和addRoutes"]-->遍历routes调用addRouteRecord方法-->record["创建record对象 \n pathList: [所有path] \n pathMap: {path: record} \n nameMap: {name: record}"]
-
-style installjs text-align: left;
-style Matcher text-align: left;
-
-```
-
-
-
-
-
-## 7. 组件通信
+## 6. 组件通信
 1. props：
 子组件显示定义好从父组件接收的数据，父组件通过v-bind传递数据；  
 不可直接改变子组件中的prop属性（单向传递）
@@ -936,3 +548,710 @@ create() {
 
 优点：父子兄弟通信不受限制；
 缺点：维护困难，谨小慎微命令规范、不利于组件化；
+
+
+
+## 7. 设计VNode
+
+```mermaid
+flowchart TB
+    VNode[VNode种类]-->html["html/svg标签"]
+    VNode-->组件
+    VNode--->纯文本
+    VNode-->Fragment
+    VNode-->Portal
+
+    组件-->stateC[有状态组件]-->普通的有状态组件
+    组件-->函数式组件
+
+    stateC-->A["`需要被keepAlive
+    的有状态的组件`"]
+    stateC-->B["`已经被keepAlive
+    的有状态组件`"];
+
+```
+
+  
+
+    
+
+使用flags作为VNode标识（优化）
+
+```js
+const VNodeFlags = {
+    // html标签
+    ELEMENT_HTML: 1,
+    // svg
+    ELEMENT_SVG: 1<< 1,
+    // 普通有状态组件
+    COMPONENT_STATEFUL_NORMAL: 1<< 2,
+    // 需被keepAlive有状态组件
+    COMPONENT_STATEFUL_SHOULD_KEEP_ALIVE: 1<< 3,
+    // 已被keepAlive有状态组件
+    COMPONENT_STATEFUL_KEEP_ALIVE: 1<< 4,
+    // 函数式组件
+    COMPONENT_FUNTIONAL: 1<< 5,
+    // 纯文本
+    TEXT: 1<<6,
+    //fragment
+    FRAGMENT: 1<< 7,
+    PORTAL: 1 << 8
+}
+
+VNode.ELEMENT = VNodeFlags.ELEMENT_HTML | VNode.ELEMENT.SVG;
+// 按位运算
+```
+
+**childrenFlags**
+
+```js
+const ChildrenFlags = {
+    UNKNOW_CHILDREN: 0, // 未知children
+    NO_CHILDREN: 1, // 没有children
+    SINGLE_CHILDREN: 1 <<1, // 单个children
+    KEYD_VNODES: 1<< 2, // children是多个有key的Vnode
+    NONE_KEYD_VNODES: 1<<3, // 多个无key的vnode
+}
+```
+
+举个栗子：拥有多个有key的li的ul
+
+```js
+const elementVNode = {
+    flags: VNodeFlags.ELEMENT_HTML,
+    tag: 'ul',
+    data: null,
+    childrenFlags: ChildrenFlags.KEYD_VNODES,
+    children: [
+        {
+            tag: 'li',
+            data: null,
+            key: 0
+        },
+        {
+            tag: 'li',
+            data: null,
+            key: 1
+        }
+    ]
+}
+```
+
+### 创建VNode的h函数
+Fragment的tag 、纯文本的tag是null ？==> 唯一标识；  
+Portal的tag也是字符串 ==> Portal标识
+
+```js
+const Fragment = Symbol();
+const Portal = Symbol();
+
+function h(tag, data = null, children = null) {
+    let flags = null;
+    if (typeof tag === 'string') {
+        flags = tag === 'svg' ? VNodeFlags.ELEMENT_SVG: VNodeFlags.ELEMENT_HTML;
+    } else if (tag === Fragment) {
+        flags = VNodeFlags.FRAGMENT;
+    } else if (tag === Portal) {
+        flags = VNodeFlags.PORTAL;
+        tag = data && tata.target;
+    } else {
+        // 兼容vue2 对象式组件
+        if (tag !== null && typeof tag === 'object') {
+            flags = tag.functional ?
+            VNodeFlags.COMPONENT_FUNTIONAL: 
+            VNodeFlags.COMPONENT_STATEFUL_NORMAL;
+        } else if (typeof tag === 'function') {
+            // vue3 类组件
+            flags = tag.prototype && tag.prototype.render ? 
+            VNodeFlags.COMPONENT_STATEFUL_NORMAL:
+            VNodeFlags.COMPONENT_FUNTIONAL;
+        }
+    }
+}
+```
+
+
+### 渲染器之挂载
+
+|旧VNode|新VNode|操作|
+|-------|-------|---|
+|x|√|mount|
+|√|x|移除dom|
+|√|√|patch|
+
+
+伪代码:
+```js
+function render(vnode, container) {
+    const prevVNode = container.vnode;
+    if (prevVNode === null) {
+        if (vnode) {
+            // 只有新无旧
+            mount(vnode, container);
+            container.vnode = vnode;
+        }
+    } else {
+        if (vnode) {
+            // 有旧有新
+            patch(prevVNode, vnode, container);
+            container.vnode = vnode;
+        } else {
+            // 有旧，新没了
+            container.removeChild(prevVNode.el);
+            container.vnode = null;
+        }
+    }
+}
+```
+
+
+不同类型用不同挂载函数。
+
+```mermaid
+graph LR;
+
+    html/svg标签-->mountElemt
+    组件-->mountComponent
+    纯文本-->mountText
+    Fragment-->mountFragment
+    Portal --> mountPortal
+```
+
+$$
+VNodeData
+\begin{cases}
+style \\
+class \\
+attributes \\
+DOM Properties \\
+事件
+\end{cases}
+$$
+
+
+#### 挂载元素
+伪代码：
+```js
+function mountElement(vnode, container, isSVG) {
+    isSVG = isSVG || vonode.flags && VNodeFlags.ELEMENT_SVG;
+    // 引用真实dom
+    const el = isSVG ? 
+        document.createElementNS('http://www.w3.org/2000/svg', vnode.tag)
+        : document.createElement(vnode.tag);
+    vnode.el = el;
+    const data = vnode.data;
+    // 处理各种data,setAttribute函数为元素设置属性，都是字符串
+    // 一些特殊的attribute，如checked，只要出现了
+    // 对应的property初始化true，只有调用removeAttribute
+    // 才会变成false
+    const domPropsRE = /\[A-Z] | ^(?:value|checked|selected|muted)$/;
+    if (data) {
+        for (let key in data) {
+            switch (key) {
+                case 'style':
+                    for (let k in data.style) {
+                        el.style[k] = data.style[k];
+                    }
+                    break;
+                case 'class':
+                    if (isSVG) {
+                        el.setAttribute('class', data[key]);
+                    } else {
+                        el.className = data[key];
+                    }
+                    break;
+                default: 
+                    // 事件要和其他属性区分开，以on开头
+                    if (key[0] === 'o' && key[1] === 'n') {
+                        el.addEventListener(key.slice(2), data[key]);
+                    } else if (domPropsRE.test(key)) {
+                        // 当作dom props处理
+                        el[key] = data[key];
+                    } else {
+                        // 当作attr处理
+                        el.setAttribute(key, data[key]);
+                    }
+                    break;
+            }
+        }
+    }
+
+    // 挂载子节点
+    const childFlags = vnode.childFlags;
+    if (childFlags !== ChildrenFlags.NO_CHILDREN) {
+        if (childFlags & ChildrenFlags.SINGLE_VNODE) {
+            mount(chidlren, el, isSVG);
+        } else if (childFlags & ChildrenFlags.MULTIPLE_VNODE) {
+            for (let i = 0; i < children.length; i++) {
+                mount(children[i], el, isSVG);
+            }
+        }
+    }
+    container.appendChild(el);
+}
+```
+
+#### 挂载纯文本
+
+```js
+function mountText(vnode, container) {
+    const el = document.createTextNode(vnode.children);
+    vnode.el = el;
+    container.appendChild(el);
+}
+```
+
+
+#### 挂载Fragment
+children的flags根据不用类型挂载不同方式；  
+
+
+$$
+el
+\begin{cases}
+一个节点： el=该节点 \\
+多个节点：el第一个节点的引用 \\
+空片段：el=占位的空文本节点元素
+\end{cases}
+$$
+
+伪代码：
+```js
+function mountFragment(vnode, container, isSVG) {
+    const {children, childFlags} = vnode;
+    switch (childFlags) {
+        case Children.SINGLE_VNODE:
+            mount(children, container, isSVG);
+            // 单个节点
+            vnode.el = children.el;
+            break;
+        case ChildrenFlags.NO_CHILDREN:
+            const placeholder = createTextVnode('');
+            mountText(placeholder, container);
+            vnode.el = placeholder.el;
+            break;
+        default:
+            for (let i = 0; i < children.length; i++) {
+                mount(chidren[i], container, isSVG);
+            }
+            vnode.el = children[0].el;
+    }
+}
+```
+
+
+#### 挂载Portal
+获取真正挂载点，而非container  
+el ？ => 占位的DOM元素，来承接事件。
+
+伪代码：
+
+```js
+function mountPortal(vnode, container) {
+    const {tag, children, childFlags} = vnode;
+    const target = typeof tag === 'string' ?
+        document.querySelector(tag): tag;
+    if (childFlags & ChildrenFlags.SINGLE_VNODE) {
+        mount(children, target);
+    } else if (childFlags & ChildrenFlags.MUTIPLE_VNODE) {
+        for (let i = 0; i < children.length; i++) {
+            mount(children[i], target);
+        }
+    }
+
+    // 占位的空文本节点
+    const placeholder = createTextVNode('');
+    mountText(placeholder, container, null);
+    // el属性引向该节点
+    vnode.el = placeholder.el;
+}
+```
+
+
+#### 挂载组件
+
+```js
+function mountComponent(vnode, container, isSVG) {
+    if (vnode.flags & VNodeFlags.COMPONENT_STATEFUL_NORMAL) {
+        mountStatefulComponent(vnode, container, isSVG);
+    } else {
+        mountFunctionalComponent(vnode, container, isSVG);
+    }
+}
+```
+
+```js
+function mountStatefulComponent(vnode, container, isSVG) {
+    // 创建组件实例
+    const instance = new vnode.tag();
+    // 渲染vnode
+    instance.$vnode = instance.render();
+    // 挂载
+    mount(instance.$vnode, container, isSVG);
+    // el属性值和组件实例的$el都引用组件的根元素
+    instance.$el = vnode.el = instance.$vnode.el;
+}
+
+function mountFunctionalComponent(vnode, container, isSVG) {
+    // 组件无实例， 更新函数放在vnode上
+    vnode.handle = {
+        prev: null,
+        next: vnode,
+        container,
+        update: () => {
+            // 已经挂载过，是更新
+            if (vnode.handle.prev) {
+                const prevVNode = vnode.handle.prev;
+                const nextVNode = vnode.handle.next;
+                // 旧组件产出vnode
+                const prevTree = prevVNode.children;
+                // 更新props
+                const props = nextVNode.data;
+                const nextTree = (nextVNode.children = nextVNode.tag(props));
+                patch(prevVNode, nextVNode, vnode.handle.container);
+            } else {
+                // 初次挂载
+                const props = vnode.data;
+                const $vnode = (vnode.children = vnode.tag(props));
+                // 挂载
+                mount($vnode, container, isSVG);
+                vnode.el = $vnode.el;
+            }
+        }
+    }
+    vnode.handle.update();
+}
+```
+
+### 渲染器之patch
+只有相同类型对别才有意义，否则直接repalce！！
+
+
+```mermaid
+flowchart LR
+    新旧VNode--不同类型-->replaceVNode
+    html/svg标签-->patchElement
+    组件-->patchComponent
+    纯文本--> patchText
+    Fragment --> patchFragment
+    Portal --> patchPortal
+```
+
+
+
+```js
+function patch(prevVNode, nextVNode, container) {
+    const nextFlags = nextVNode.flags;
+    const prevFlags = prevVNode.flags;
+    if (prevFlags !== nextFlags) {
+        replaceVNode(prevVNode, nextVNode, container);
+    } else if (nextFlags & VNodeFlags.ELEMENT) {
+        patchElement(prevVNode, nextVNode, container);
+    }
+    ...
+}
+
+// 简易版repalce
+function replaceVNode(prevVNode, nextVNode, container) {
+    // 将旧vnode渲染的dom移除
+    container.removeChild(prevVNode.el);
+    // 挂载新的
+    mount(nextVNode, container);
+}
+```
+
+
+#### 更新标签元素
+$$
+标签元素
+\begin{cases}
+不同tag： repalce \\
+相同tag
+\begin{cases}
+VNodeData: patchData \\
+children: patchChildren
+\end{cases}
+\end{cases}
+$$
+
+
+##### patchData
+
+* 遍历VNodeData;
+* 根据新key，读取新旧值；
+* 不同更新操作；
+
+
+```js
+export function patchData(el, key, prevValue, nextValue) {
+    switch(key) {
+        case 'style':
+            for (let k in nextValue) {
+                el.style[k] = nextValue[k];
+            }
+            for (let k in prevValue) {
+                if (!nextValue.hasOwnProperty(k)) {
+                    el.style[k] = '';
+                }
+            }
+            break;
+        case 'class':
+            el.className = nextValue;
+            break;
+        default:
+            if (key[0] === 'o' && key[1] === 'n') {
+                // 事件
+                el.addEventListener(key.slice(2), nextValue);
+            } else if (domPropsRE.test(key)) {
+                el[key] = nextValue;
+            } else {
+                el.setAttribute(key, nextValue);
+            }
+            break;
+    }
+}
+```
+
+##### patchChildren
+3*3 = 9 种情况
+
+
+```mermaid
+flowchart LR
+    oldS[旧children只一个]-->新children只一个-->2个子节点的patch
+    oldS-->新children无子节点-->移除旧节点
+    oldS-->新chidlren有多个-->移除旧,添加多个新
+```
+-----------------------------------
+```mermaid
+flowchart LR
+    oldN[旧children无节点] --> 新children只一个-->将新的添加
+    oldN-->新children无子节点--> 不做
+    oldN-->新chidlren有多个-->添加多个新
+```
+
+----------------------
+
+
+```mermaid
+flowchart LR
+    oldM[旧children多个节点] --> 新children只一个-->移除旧,将新的添加
+    oldM-->新children无子节点--> 旧的多个移除
+    oldM-->新chidlren有多个--> A[核心diff,同层级比较#9829;]
+```
+
+
+```js
+function patchChildren(
+    prevChildFlags,
+    nextChildFlags,
+    prevChildren,
+    nextChildren,
+    container
+) {
+    switch(prevChildFlags) {
+        // 旧是单个
+        case ChildrenFlags.SINGLE_VNODE:
+            switch(nextChildFlags) {
+                case ChildrenFlags.SINGLE_VNODE:
+                    patch(prevChildren, nextChildren, container);
+                    break;
+                case ChildrenFlag.NO_CHILDREN:
+                    container.removeChild(prevChildren.el);
+                    break;
+                default:
+                    // 移除旧的单个节点
+                    container.removeChild(prevChildren.el);
+                    // 遍历多个节点，逐个挂载
+                    for (let i = 0; i < nextChildren.length; i++) {
+                        mount(netChildren[i], container);
+                    }
+                    break;
+            }
+            break;
+        // 旧无节点
+        case ChildrenFlags.NO_CHILDREN:
+            switch(nextChildFlags) {
+                case ChildrenFlags.SINGLE_VNODE:
+                    // 新是单个
+                    mount(nextChildren, container);
+                    break;
+                case ChildrenFlags.NO_CHILDREN:
+                    // 什么都不做
+                    break;
+                default:
+                    // 新的多个
+                    for (let i = 0; i < nextChildren.length; i++) {
+                        mount(nextChildren[i], container);
+                    }
+                    break;
+            }
+            break;
+        default:
+            switch(nextChildFlags) {
+                case ChildrenFlags.SINGLE_VNODE:
+                    for (let i = 0; i < prevChildren.length; i++) {
+                        container.removeChild(prevChildren[i].el);
+                    }
+                    mount(nextChildren, container);
+                    break;
+                case ChildrenFlags.NO_CHILDREN:
+                    for (let i = 0; i < prevChildren.length; i++) {
+                        container.removeChild(prevChildren[i].el);
+                    }
+                    break;
+                default:
+                    // 核心diff算法
+                    ...
+                    break;
+            }
+            break;
+    }
+}
+```
+
+
+#### 更新文本节点
+文本的内容不一致才更新
+
+```js
+function patchText(prevVNode, nextVNode) {
+    // el指向
+    const el = (nextVNode.el = prevVNode.el);
+    if (nextVNode.children !== prevVNode.children) {
+        el.nodeValue = nextVNode.children;
+    }
+}
+```
+
+
+#### 更新Fragment
+* patchChildren
+* 子节点不同，el指向不同
+
+```js
+function patchFragment(prevVNode, nextVNode, container) {
+    patchChildren(
+        prevVNode.childFlags,
+        nextVNode.childFlags,
+        prevVNode.children,
+        nextVNode.children,
+        contaienr
+    );
+    switch(nextVNode.childFlags) {
+        case ChildrenFlags.SINGLE_VNODE:
+            nextVNode.el = nextVNode.children.el;
+            break;
+        case ChildrenFlags.NO_CHILDREN:
+            nextVNode.el = prevVNode.el;
+            break;
+        default:
+            nextVNode.el = nextVNode.children[0].el;
+            break;
+    }
+}
+```
+
+
+#### 更新Portal
+
+* patchChildren；
+* 挂载目标改变，更新后子节点在旧容器，旧容器内元素搬到新容器中；
+
+
+```js
+function patchPortal(prevVNode, nextVNode) {
+    patchChildren(
+        prevVNode.childFlags,
+        nextVNode.childFlags,
+        prevVNode.chidlren,
+        nextVNode.children,
+        prevVNode.tag  // container是旧的
+    );
+    // el属性始终是个占位的文本节点
+    nextVNode.el = prevVNode.el;
+    // 新旧容器不同才搬运
+    if (nextVNode.tag !== prevVNode.tag) {
+        // 获取新容器元素
+        const container = typeof nextVNode.tag === 'string' 
+            ? document.querySelector(nextVNode.tag)
+            : nextVNode.tag;
+        switch(nextVNode.childFlags) {
+            case ChildrenFlags.SINGLE_VNODE:
+                // 新portal是单个
+                container.appendChild(nextVNode.children.el);
+                break;
+            case ChildrenFlags.NO_CHILDREN:
+                break;
+            default:
+                // 新的多个节点，逐个搬运
+                for (let i = 0; i < nextVNode.children.length; i++) {
+                    container.appendChild(nextVNode.children[i].el);
+                }
+                break;
+        }
+
+    }
+}
+```
+
+
+
+#### 更新有状态组件
+* 主动更新：自身状态变化；
+* 被动更新：外部状态变化；
+
+重写mountStatefulComponent
+
+
+```js
+function mountStatefulComponent(vnode, container, isSVG) {
+    // 创建组件
+    const instance = new vnode.tag();
+    instance._update = function() {
+        // 渲染
+        instance.$vnode = instance.render();
+        // 挂载
+        mount(instance.$vnode, container, isSVG);
+        // el 引用根dom
+        instance.$el = vnode.el = instance.$vnode.el;
+        // 调用钩子
+        instance.mounted && instance.mounted();
+    }
+    instance._update();
+}
+
+```
+第二次更新应该为patch：新老vnode对比：
+
+```js
+
+function mountStatefulComponent(vnode, container, isSVG) {
+    // 创建组件
+    const instance = (vnode.children = new vnode.tag());
+    instance._update = function() {
+        // 已挂载，应更新
+        if (instance._mounted) {
+            // 旧vnode
+            const prevVNode = instance.$vnode;
+            const nextVNode = (instance.$vnode = instance.render());
+            // patch
+            patch(prevVNode, nextVNode, prevVNode.el, parentNode);
+            // 更新el
+            instance.$el = vnode.el = instance.$vnode.el;
+        } else {
+
+            // 渲染
+            instance.$vnode = instance.render();
+            // 挂载
+            mount(instance.$vnode, container, isSVG);
+            instance._mounted = true;
+            // el 引用根dom
+            instance.$el = vnode.el = instance.$vnode.el;
+            // 调用钩子
+            instance.mounted && instance.mounted();
+        }
+    }
+    instance._update();
+}
+```

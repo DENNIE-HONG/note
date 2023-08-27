@@ -276,23 +276,23 @@ function createReactiveObject() {
 ```
 
 ```mermaid
-flowchart TB;
+graph TB
 
-shallowReactive---CreateReactiveObject;
-reactive---CreateReactiveObject;
-readonly---CreateReactiveObject;
-shallowReadonly---CreateReactiveObject;
+    shallowReactive---CreateReactiveObject
+    reactive---CreateReactiveObject
+    readonly---CreateReactiveObject
+    shallowReadonly---CreateReactiveObject
 
-CreateReactiveObject---s{是否已proxy};
-s--是-->返回observed;
-s--否-->isSet{"是否是Set、Map、WeakSet、WeakMap类型"};
+    CreateReactiveObject---s{是否已proxy}
+    s--是-->返回observed
+    s--否-->isSet{"是否是Set、Map、WeakSet、WeakMap类型"}
 
-isSet--"是(collection)"-->Proxy[New Proxy];
-isSet--"否(baseHandlers)"--->Proxy;
+    isSet--"是(collection)"-->Proxy[New Proxy]
+    isSet--"否(baseHandlers)"--->Proxy
 
-Proxy-->isRead{是否只读};
-isRead--是-->A[rawToReadonly\n readonlyToRaw\n 收集];
-isRead--否-->B[rawReactive \n reactiveToRaw \n 收集]
+    Proxy-->isRead{是否只读}
+    isRead--是-->A[rawToReadonly\n readonlyToRaw\n 收集]
+    isRead--否-->B["rawReactive \n reactiveToRaw \n 收集"]
 
 ```
 
@@ -537,3 +537,6 @@ export function trigger(
 
 }
 ```
+
+
+
