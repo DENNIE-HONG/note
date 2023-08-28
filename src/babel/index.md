@@ -81,14 +81,20 @@ require("core-js/moduels/es.promise");
 
 
 #### Q: 会使用小的辅助函数实现一些公共方法，多次使用多次inject到文件，冗余？比如_creaeClass的_classCallCheck()?
-A: @babel/plugin-transform-runtime, 所有帮助程序都将引用模块@babel/runtime。
+A: @babel/plugin-transform-runtime, 该插件会开启对babel注入辅助函数的复用，以节省代码体积。  
+所有帮助程序（比如上边的_classCallCheck）都将引用模块@babel/runtime， 所以需要安装@babel/runtime。  
 @babel/plugin-transform-runtime: 开发依赖；
 @babel/rumtime: 生产依赖.
 即_classCallCheck函数不再是注入式，而是require自@babel/runtime， 消除冗余。
 
 
-Q: 以下的区别？
+#### Q: 以下的区别？
 * babel/runtime
 * babel/polyfill
 * babel/plugin-transform-runtime
 
+A: 
+1. polyfill: 包括所有新的API等，让新的内置函数、实例方法等在低版本浏览器中也可以使用。需要在代码中先引用。
+但是项目中如果只使用部分es6新api，引用整个垫片太大了，所以需要按需引入，直接注入垫片会有冗余问题。 
+2. 可以使用plugin-transform-runtime用require方式引用一些帮助函数。
+3. 这些帮助函数定义在runtime里。
