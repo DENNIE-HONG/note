@@ -413,13 +413,12 @@ const request = ({
     url,
     method = "post",
     data,
-    headers = {},
-    requestList
+    headers = {}
 }) => {
     return new Promise(resolve => {
         const xhr = new XMLHttpRequest();
         xhr.open(method, url);
-        Object.keys(handers).forEach(key => {
+        Object.keys(headers).forEach(key => {
             xhr.setRequestHeader(key, headers[key]);
         });
         xhr.send(data);
@@ -458,7 +457,7 @@ const mergeRequest = async() => {
 };
 // 上传切片
 const uploadChunks = async (data) => {
-    const requestList = data.map(({chunk, hask}) => {
+    const requestList = data.map(({chunk, hash}) => {
         const formData = new FormData();
         formData.append("chunk", chunk);
         formData.append("hash", hash);
@@ -477,6 +476,7 @@ const uploadChunks = async (data) => {
     await mergeRquest();
 };
 
+// 提交表单
 const handleUpload = async () => {
     if (!container.file) return;
     const fileChunkList = createFileChunk(container.file);
