@@ -176,7 +176,7 @@ cookie优化：
 3. 路由器缓存
 4. ISP（互联网服务提供商）DNS缓存，比如用的电信网络，则进入电信的DNS缓存服务器找。
 5. 根域名服务器：全球只有13台
-6. 顶级域名服务器：若无则将主域名服务器ip告诉DNS
+6. 顶级域名服务器：若无则将主域名服务器ip告诉DNS （例如.com）
 7. 主域名服务器：如果没有则进入下一级域名服务器，重复直到找到。
 8. 保存结果至缓存：本地域名服务器把返回保存。将结果返回给客户端，与web服务器建立连接。
 
@@ -209,16 +209,18 @@ Event Loop顺序:
 4. 必要的话渲染UI
 5. 下一轮Event Loop, 执行宏任务中的异步代码。
 
-# 5.执行时间线
-1. 创建Document对象 -> 解析HTML元素 -> 添加Element对象和Text节点，
-document.readystate: loading.
-2. 遇到\<script\>执行行内or外部脚本，脚本同步执行，脚本下载时解析器暂停；
-3. 遇到async的\<script\> -> 开始下载脚本并继续解析文档，脚本会下载完后尽快执行，但解析器不会停下等它下载；
-4. 文档完成解析，document.readystate:interactive;
-5. 所有defer的\<script\>按照文档出现顺序执行脚本；
-6. 触发DOMContentLoaded事件 -> 异步事件驱动；
-7. 等待图片载入  -> 异步脚本载入与执行 -> 触发load事件，document.readystate: complete;
-8. 调用异步事件：用户输入等；
+# 5.浏览器执行时间线
+1. 创建Document对象 &rarr; 解析HTML元素 &rarr; 添加Element对象和Text节点到文档，这个阶段
+document.readystate: loading；
+2. 遇到link外部css，创建线程，**异步**加载，并继续解析文档；
+3. 遇到\<script\>（没defer、没async），浏览器**同步**加载并阻塞，解析器暂停，加载完并执行脚本，然后继续解析文档；
+4. 遇到async的\<script\> &rarr; 开始下载脚本并继续解析文档，脚本会下载完后尽快执行，但解析器不会停下等它下载；
+5. 遇到img等带src，正常解析dom，**异步**加载src，并继续解析文档；
+6. 文档完成解析，document.readystate:interactive;
+7. 所有defer的\<script\>按照文档出现顺序执行脚本；
+8. 触发DOMContentLoaded事件 &rarr; 程序执行为异步事件驱动；
+9. 等待图片载入  &rarr; 异步脚本载入与执行 &rarr; window触发load事件，document.readystate: complete;
+10. 从此，异步响应方式处理用户输入等；
 
 
 ## css加载是否会阻塞dom树渲染？
