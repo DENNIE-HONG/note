@@ -229,41 +229,81 @@ css由单独的下载线程异步下载。
 
 ## DOMContentLoaded事件
 当一个HTML文档被加载和解析完成后，DDOMContentLoaded事件触发。
-```js
- ____     ___
-|HTML|——>|DOM|
- ————     ———  \  ______     ______     _____
-                 |Render|——>|Layout|——>|Paint|
-                 | Tree |    ——————     —————
- ___     _____/   ——————
-|CSS|——>|CSSOM|
- ———     —————
 
 
+```mermaid
+graph LR;
+    HTML --> DOM --> RenderTree
+    CSS --> CSSOM --> RenderTree
+    
+    RenderTree --> Layout --> Paint
 ```
+
 
 ## 异步脚本defer和async的区别？
 
+图例：
+* <font color="purple">HTML解析</font>
+* <font color="gray">HTML暂定</font>
+* <font color="lightpurple">script下载</font>
+* <font color="red">script执行</font>
+
 同步脚本：停止解析，先加载脚本，执行脚本，继续解析HTML.
 
-<font color="green">=======<font color="gray">=====</font>=====</font>
 
-<span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><font color="blue">==</font><font color="pink">===</font>
+```mermaid
+---
+displayMode: compact
+---
+gantt
+    title 同步脚本解析
+    dateFormat HH:mm
+    axisFormat %H:%M
+    section 同步js
+        解析: a1, 17:00,5m
+        停止: done, stop1, after a1, 3m
+        下载: active, download, after a1, 1m
+        执行: crit, 2m
+        解析: 2m
+```
+
+
 
 defer脚本：后台加载脚本，等文档解析完，defer脚本执行。
-<font color="green">=================</font>
-<span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><font color="blue">==</font><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><font color="pink">===</font>
+
+
+```mermaid
+gantt
+    title defer脚本解析
+    dateFormat HH:mm
+    axisFormat %H:%M
+    section defer的js
+        解析: a1, 17:00, 8m
+        下载: active, 17:05, 1m
+        执行: crit, after a1, 2m
+```
 
 async脚本：后台加载脚本，文档解析不中断，加载后文档停止解析，脚本执行。
 
-<font color="green">=========<font color="gray">===</font>==</font>
-<span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><font color="blue">==</font><font color="pink">===</font>
 
-图例：
-* <font color="green">HTML解析</font>
-* <font color="gray">HTML暂定</font>
-* <font color="blue">script下载</font>
-* <font color="pink">script执行</font>
+
+```mermaid
+---
+displayMode: compact
+---
+gantt
+    title async脚本解析
+    dateFormat HH:mm
+    axisFormat %H:%M
+    section async的js
+        解析: a1, 17:00, 5m
+        下载: active, download, 17:04, 1m
+        停止: done, stop, after a1, 2m
+        执行: crit, after download, 2m
+        解析: after stop, 2m
+```
+
+
 
 
 ## 浏览器加载资源过程
