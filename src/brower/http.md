@@ -71,7 +71,7 @@ socket.onmessage = function(event) {
   // todo
 };
 ```
-websocket握手：通过HTTP发起请求报文,只支持GET
+websocket握手：通过HTTP发起请求报文,只支持GET  
 协议头区别：
 从客户端到服务器：
 * GET /chat HTTP/1.1
@@ -244,17 +244,17 @@ _handleFrame(opcode, buffer) {
 ### 2.3 长轮询
 客户端发出请求后，服务端用while(true)等方式阻塞住请求，直到有可用数据发送响应，又称为“comet”、“反向ajax”。但仍然是基于http的一种慢响应。
 ### 2.4 HTTP流（基于iframe）
+
+
+```mermaid
+sequenceDiagram
+    client->>server: connect
+    server->>client: push
+    server->>client: push
+    client->>server: close connection
 ```
 
-           connect
-          -------------->
- _______           push      ________
-|client | <--------------   | server |
-|_______|           push    |________|
-          <---------------
-          close connection
-          ---------------->
-```
+
 使用http1.1且响应头中包含Transfer-Encoding:chunked情况下，服务器发送给客户端数据可分成多个部分，保持打开，并周期性flush()分块传输。但数据响应可能会因代理服务器or防火墙等中间人造成延迟。
 ### 2.5 SSE(Server-Sent-Events)
 服务端响应内容类型是text/event-stream,在浏览器端使用EventSource对象处理返回的数据。
