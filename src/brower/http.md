@@ -360,20 +360,24 @@ if ('serviceWorker' in navigator) {
 2. 安装
 3. 激活
 
-```js
 
-                         生命周期
 
-      __________________________失败_________________________________________
-     |                                                                      |
- ____|______    _________     __________     _________                   ___↓_____
-|installing|——>|installed|——>|activating|——>|activated|——被新sw.js代替——>|redundant|
-|          |   |(waiting)|    ——————————     —————————                   ——————————
- ——————————     —————————         |               |
-     |              |             ----激活过程-----
-     -----安装过程---
-
+```mermaid
+graph LR
+    subgraph 安装过程
+        direction LR
+        installing-->installed["installed(waiting)"]
+    end
+    subgraph 激活过程
+        direction LR
+        activating-->activated
+    end
+    
+    installed --> activating
+    activated--被新sw.js代替-->redundant
+    installing --失败--> redundant
 ```
+
 ### sw.js
 #### 安装过程
 ```js
