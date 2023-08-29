@@ -512,7 +512,9 @@ a域与b域相互通信，通过中间页c来实现，不同域利用iframe的lo
 ```
 
 ### 方案4：window.name + iframe
-window.name值在不同页面加载后依旧存在，可支持（2M）的值。
+window.name值在不同页面加载后依旧存在，可支持（2M）的值。  
+iframe向b页面获取数据后存在window.name, 再将iframe的src修改到a页面的域名下，这时候iframe就可以与a页面进行数据传递了。
+
 1. a.html(domain1.com/a.html)
 ```js
 var proxy = function(url, callback) {
@@ -528,7 +530,7 @@ var proxy = function(url, callback) {
       destroyFrame();
     } else {
       // 第一次onload成功，切换到同域代理页
-      iframe.conentWindow.location = 'http://domain1.com/proxy.html';
+      iframe.contentWindow.location = 'http://domain1.com/proxy.html';
       state = 1;
     }
   }
