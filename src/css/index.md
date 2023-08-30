@@ -21,9 +21,9 @@ flex布局
 主轴\\
 交叉轴
 \end{cases}
-\\容器
+\\ 容器
 \begin{cases}
-父容器\\
+父容器 \\
 子容器 
 \end{cases}
 \end{cases}
@@ -62,12 +62,13 @@ graph TB;
 ```
 
 **flex-flow**：
+
 $$
 flex-flow
-\begin{cases}
-flex-direction \\
-flex-wrap
-\end{cases}
+    \begin{cases}
+    flex-direction \\
+    flex-wrap
+    \end{cases}
 的简写
 $$
 
@@ -508,7 +509,7 @@ ______________________
 }
 .right {
   width: 100px;
-  height: 2000px;
+  height: 200px;
   margin-left: -100px;
 }
 ```
