@@ -503,10 +503,12 @@ sequenceDiagram
     loop 
         client->>client: 使用公钥对对称秘钥加密 
     end
-    client->>server: 发送加密后的对称秘钥
+    client->>server: 发送加密后的对称秘钥xx（这段话用公钥加密）
     client->>server: 通过对称秘钥加密的密文通信
 ```
 
+更多信息： 
+> https://zhuanlan.zhihu.com/p/43789231
 
 ## 6.请求资源
 请求静态资源的流程：
@@ -567,7 +569,7 @@ web页面       -------------------------             ____________
 Q: ISN是固定的吗？
 A: 动态生成。
 
-Q: 什么是半连接队列？
+Q: 什么是半连接队列？  
 A: 服务器第一次收到客户端的SYN之后，处于SYN_REVD状态，此时双方还没有完全简历连接，将这种状态放在一个半连接队列，如果队列满了，就有可能出现丢包现象。
 SYN-ACK重传：服务器发完SYN-ACK包，未收到客户端确认，服务器进行首次重传。第一段时间后未收到，再重传，超传重传太多次，将连接信息从半连接队列中删除。
 
@@ -580,25 +582,27 @@ tcp是存在单向关闭，主动方虽然挥手了，但还可以继续接手�
 tips：
 ACK确认序号，Seq发送序号。
 
-```js
 
-主动关闭                     被动关闭
 
-         |                |
-         |                |
-FIN_WAIT |   __FIN_       |
-         |——|  M   |—————>|
-         |   ——————       |
-         |   _ACK_        |
-FIN_WAIT |<—| M+1 |———————|CLOSE_WAIT
-         |   —————        |
-         |    _FIN_       |
-         |<——| N   |——————|LAST_ACK
-         |    —————       |
-         |    __ACK_      |
-TIME_WAIT|———| N + 1|————>|CLOSE
-(2MSL)   |    ——————      |
+```mermaid
+sequenceDiagram
+    Note left of 主动关闭: estabished
+    Note right of 被动关闭: estabished
+    主动关闭->>被动关闭: FIN
+    Note right of 主动关闭: seq = M
+    Note left of 主动关闭: FIN-WAIT
+    被动关闭->>主动关闭: ACK = M + 1
+    Note right of 被动关闭: CLOSE_WAIT
+    被动关闭->>主动关闭: FIN
+    Note left of 被动关闭: Seq = N
+    Note right of 被动关闭: LAST_ACK
+    主动关闭->>被动关闭: ACK = N + 1
+    Note left of 主动关闭: TIME_WAIT(2MSL)
+    Note right of 被动关闭: CLOSE
+    Note left of 主动关闭: CLOSE    
 ```
+
+
 
 1. 第一次挥手： 主动方发送Fin = 1报文, 指定序列号Seq = M的报文，处于FIN-WAIT状态；
 
@@ -608,16 +612,16 @@ TIME_WAIT|———| N + 1|————>|CLOSE
 
 5. 被动方收到ACK报文，关闭连接，处于CLOSE状态。
 
-Q: 为什么客户端发送ACK之后不直接关闭？
-A: 确保服务器是否以收到ACK报文，如果没收到，服务器会重发FIN报文给客户端。客户端再次收到后就知道之前ACK报文丢失，会再发送ACK报文。
+**Q: 为什么主动关闭方发送最后的ACK之后不直接关闭？**
+A: 确保被动方是否以收到ACK报文，如果没收到，被动方会重发FIN报文给主动方。主动方再次收到后就知道之前ACK报文丢失，会再发送ACK报文。
 TIME_WAIT设置一个计时，过了计时没有再收到FIN报文，则代表成功，处于CLOSE状态。
 
-Q: 等待2MSL的意义？
+**Q: 等待2MSL的意义？**
 A:
 1. 1个MSL确保四次挥手中主动关闭方最后的ACK报文UI中到达对端。
 2. 1个MSL确保对端没有收到ACK, 重传的FIN报文可以到达。
 
-Q: 为什么是四次挥手而不是三次？
+**Q: 为什么是四次挥手而不是三次？**
 A: 比如客户端是主动方，服务端在接收到FIN, 必须等到所有报文都发送完了，才能发送FIN, 因此先发一个ACK表示已收到客户端的FIN, 延迟一段时间才发FIN。
 
 
