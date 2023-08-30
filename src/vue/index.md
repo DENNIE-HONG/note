@@ -1255,3 +1255,53 @@ function mountStatefulComponent(vnode, container, isSVG) {
     instance._update();
 }
 ```
+
+```js
+function patchComponent(prevVNode, nextVNode, container) {
+    // tag值是组件类
+    if (nextVNode.tag !== prevVNode.tag) {
+        replaceVNode(prevVNode, nextVNode, container);
+    } else if (nextVNode.flags & VNodeFlags.COMPONENT_STATEFUL_NORMAL) {
+        // 获取组件实例
+        const instance = (nextVNode.children = prevVNode.children);
+        // 更新props
+        instance.$props = nextVNode.data;
+        // 更新
+        instance._update();
+    } else {
+        // 更新函数式组件
+        const handle = (nextVNode.handle = prevVNode.handle);
+        // 更新handle对象
+        handle.prev = prevVNode;
+        handle.next = nextVNode;
+        handle.container = container;
+        // 调用update
+        handle.update();
+    }
+}
+```
+
+handle对象改变：
+
+```mermaid
+graph LR
+    subgraph before
+        a["`handle = {
+                prev: null,
+                next: prevVNode,
+                container,
+                update() {}
+        }`"]
+    end
+    subgraph after
+        b["`handle = {
+            prev: prevVNode,
+            next: nextVNode,
+            container,
+            update() {}
+        }`"]
+    end
+    before --> after
+    style a text-align: left
+    style b text-align: left
+```
