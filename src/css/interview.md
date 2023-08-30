@@ -83,7 +83,7 @@ div {
   overflow: hidden;
 }
 ```
-6. 父级div定义伪类after和zoom
+6. 父级div定义伪元素after和zoom
 ```css
 .clearfix: after {
   content: '.';
