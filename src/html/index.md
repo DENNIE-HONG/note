@@ -208,7 +208,7 @@ output:  计算or用户操作的结果
 ```js
 class Store {
   constructor () {
-    const store = localStorage.getItem('cache');
+    let store = localStorage.getItem('cache');
     if (!store) {
       store = {
         maxSize: 1024 * 1024,
@@ -234,7 +234,12 @@ class Store {
         return item2.date - item1.date;
       });
       while(size + this.store.size > this.store.maxSize) {
-        delete this.store[keys[keys.length -1]];
+        // 从最后一个开始删除
+        const removeKey = keys[keys.length-1];
+        const removeSize = sizeof(JSON.stringify(this.store[removeKey]));
+        delete this.store[removeKey];
+        keys.pop();
+        this.store.size -= removeSize;
       }
     }
     this.store.size += size;
