@@ -406,6 +406,259 @@ stateDiagram
 四步对比均没有，再旧中找到b所在索引，因为b已经在第一个。即把b对应真实DOM移到最前面。该节点置为undefined.
 
 
+```mermaid
+stateDiagram
+    direction TB
+    classDef notDiff stroke-dasharray: 5 5
+    state 旧 {
+        [*]--> a: oldStartIdx
+        1--> undefined
+        2--> c
+        3--> d: oldEndIdx
+    }
+    state 新 {
+        b1: b
+        d1: d
+        [*]-->d1 : newStartIdx
+        a1: a
+        c1: c
+        [*2]-->a1
+        [*3] --> c1: newEndIdx
+    }
+    class undefined, b1 notDiff 
+```
+会导致oldStartVNode、oldEndVNode可能undefined, 可直接跳过这个位置。
+
+##### 2. 新加元素
+
+```mermaid
+stateDiagram
+    direction TB
+    state 旧 {
+        [*]--> a: oldStartIdx
+        1--> b
+        2--> c: oldEndIdx
+    }
+    state 新 {
+        d1: d
+        [*]-->d1: newStartIdx
+        a1: a
+        c1: c
+        b1: b
+        [*1]--> a1
+        [*2]--> c1
+        [*3] --> b1: newEndIdx
+    } 
+```
+4步对比没有，d在旧中没有，即新节点。挂载在oldStartIdx位置节点对应真实DOM前面。
+
+##### 3. 被遗忘的节点
+
+```mermaid
+stateDiagram
+    direction TB
+    state 旧 {
+        [*]--> a: oldStartIdx
+        1--> b
+        2--> c: oldEndIdx
+    }
+    state 新 {
+        d1: d
+        [*]-->d1: newStartIdx
+        a1: a
+        b1: b
+        c1: c
+        [*1]--> a1
+        [*2] --> b1
+        [*3]--> c1: newEndIdx
+    } 
+```
+c->c 
+
+```mermaid
+stateDiagram
+    direction TB
+    state 旧 {
+        [*]--> a: oldStartIdx
+        1--> b: oldEndIdx
+        c
+    }
+    state 新 {
+        d1: d
+        [*]-->d1: newStartIdx
+        a1: a
+        b1: b
+        c1: c
+        [*1]--> a1
+        [*2] --> b1: newEndIdx
+        c1
+    } 
+```
+b-b
+
+```mermaid
+stateDiagram
+    direction TB
+    state 旧 {
+        [*]--> a: oldStartIdx,oldEndIdx
+        b
+        c
+    }
+    state 新 {
+        d1: d
+        [*]-->d1: newStartIdx
+        a1: a
+        b1: b
+        c1: c
+        [*1]--> a1: newEndIdx
+        b1
+        c1
+    } 
+```
+a-a  
+oldEndIdx: -1, 但d被遗忘了。  
+故循环结束，oldEndIdx < oldStartIdx, children中有没被处理的节点。 
+
+
+##### 4. 移除不存在的元素
+
+
+```mermaid
+stateDiagram
+    direction TB
+    state 旧 {
+        [*]--> a: oldStartIdx
+        1--> b
+        2--> c: oldEndIdx
+    }
+    state 新 {
+        a1: a
+        [*]-->a1: newStartIdx
+        c1: c
+        [*1]--> c1: newEndIdx
+    } 
+```
+找到a-a, patch, 索引移位。
+
+```mermaid
+stateDiagram
+    direction TB
+    classDef notDiff stroke-dasharray: 5 5
+    state 旧 {
+        0--> a
+        [*]--> b: oldStartIdx
+        2--> c: oldEndIdx
+    }
+    state 新 {
+        a1: a
+        [*0]--> a1 
+        c1: c
+        [*]--> c1: newStartIdx,newEndIdx
+    } 
+    class a, a1 notDiff 
+```
+
+找到c-c，patch, 索引前移。
+
+```mermaid
+stateDiagram
+    direction TB
+    classDef notDiff stroke-dasharray: 5 5
+    state 旧 {
+        0--> a
+        [*]--> b: oldStartIdx,oldEndIdx
+        c
+    }
+    state 新 {
+        a1: a
+        [*0]--> a1: newEndIdx
+        c1: c
+        [*]--> c1: newStartIdx
+    } 
+    class a, a1, c, c1 notDiff 
+```
+
+newEndIdx < newStartIdx, 但b没有被处理，应移除。
+
+
+伪代码：
+```js
+let oldStartIdx = 0;
+let oldEndIdx = prevChildren.length - 1;
+let newStartIdx = 0;
+let newEndIdx = nextChildren.length -1;
+
+let oldStartVNode = prevChildren[oldStartIdx];
+let oldEndVNode = prevChildren[oldEndIdx];
+let newStartVNode = nextChildren[newStartIdx];
+let newEndVNode = nextChildren[newEndIdx];
+
+while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
+    if (!oldStartVNode) {
+        oldStartVNode = prevChildren[++oldStartIdx];
+    } else if (!oldEndVNode) {
+        oldEndVNode = prevChildren[--oldEndIdx];
+    } else if (oldStartVNode.key === newStartVNode.key) {
+        // 首首对比
+        // 调用patch更新，索引移后
+        patch(oldStartVNode, newStartVNode, container);
+        oldStartVNode = prevChildren[++oldStartIdx];
+        newStartVNode = nextChildren[++newStartIdx];
+    } else if (oldEndVNode.key === newEndVNode.key) {
+        // 尾尾对比
+        // patch更新、索引前移
+        patch(oldEndVNode, newEndVNode, container);
+        oldEndVNode = prevChildren[--oldEndIdx];
+        newEndVNode = nextChildren[--newEndIdx];
+    } else if (oldStartVNode.key === newEndVNode.key) {
+        // 首尾对比，即第一个变成了最后一个
+        patch(oldStartVNode, newEndVNode, container);
+        // 将旧首的真实dom移动到旧尾真实dom后面
+        container.insertBefore(oldStartVNode.el, oldEndVNode.el.nextSibling);
+        // 更新索引
+        oldStartVNode = prevChildren[++oldStartIdx];
+        newEndVNode = nextChildren[--newStartIdx];
+    } else if (oldEndVNode.key === newStartVNode.key) {
+        // 尾首对比，最后一个变成了第一个
+        patch(oldEndVNode, newStartVNode, container);
+        // 最后一个子节点移动到最前面
+        container.insertBefore(oldEndVNode.el, oldStartVNode.el);
+        // 更新索引
+        oldEndVNode = prevChildren[--oldEndIdx];
+        newStartVNode = nextChildren[++newStartIdx];
+    } else {
+        // 4种对比无结果
+        // 遍历旧，寻找与newStartVNode相同的key的
+        const idxInOld = prevChildren.findIndex(node => node.key === newStartVNode.key);
+        if (idxInOld >= 0) {
+            // 找到的节点，对应的真实dom移到最前面，情况1
+            const vnodeToMove = prevChildren[idxInOld];
+            patch(vnodeToMove, newStartVNode, container);
+            // 移动
+            container.insertBefore(vnodeToMove.el, oldStartVNode.el);
+            prevChildren[idxInOld] = undefined;
+        } else {
+            // 添加新元素
+            mount(newStartVNode, container, false, oldStartVNode.el);
+        }
+        newStartVNode = nextChildren[++newStartIdx];
+    }
+    // 情况3，被遗忘的节点
+    if (oldEndIdx < oldStartIdx) {
+        for (let i = newStartIdx; i <= newEndIdx; i++) {
+            mount(nextChildren[i], container, false, oldStartVNode.el);
+        }
+    } else if (newEndIdx < newStartIdx) {
+        // 情况4
+        for (let i = oldStartIdx; i <= oldEndIdx; i++) {
+            container.removeChild(prevChlidren[i].el);
+        }
+    }
+}
+```
+
+
+
 
 
 
