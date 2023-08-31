@@ -638,7 +638,7 @@ while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
             container.insertBefore(vnodeToMove.el, oldStartVNode.el);
             prevChildren[idxInOld] = undefined;
         } else {
-            // 添加新元素
+            // 添加新元素, 情况2
             mount(newStartVNode, container, false, oldStartVNode.el);
         }
         newStartVNode = nextChildren[++newStartIdx];
@@ -649,7 +649,7 @@ while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
             mount(nextChildren[i], container, false, oldStartVNode.el);
         }
     } else if (newEndIdx < newStartIdx) {
-        // 情况4
+        // 情况4，不存在的元素
         for (let i = oldStartIdx; i <= oldEndIdx; i++) {
             container.removeChild(prevChlidren[i].el);
         }
