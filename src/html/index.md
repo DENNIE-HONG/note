@@ -255,6 +255,8 @@ class Store {
     }
     if (d.expire > Date.now) {
       console.log('过期删除');
+      const removeSize = sizeof(JSON.stringify(d));
+      this.store.size -= removeSize;
       delete this.store[key];
       localStorage.setItem('cache', this.store);
     } else {
@@ -304,7 +306,7 @@ A:
 5. 共享：
   * sessionStorage不能共享；
   * localStorage在同源文档中间共享；
-  * ciikie同源且符合path规则的文档之间共享；
+  * cookie同源且符合path规则的文档之间共享；
 6. localStorage的修改会促发其他文档窗口的update事件；
 7. cookie有sercure属性要求HTTPS传输；
 8. 浏览器不能保存超过300个cookie，单个服务器不超过20个，每个cookie不超4k，web storage支持达到5M;
