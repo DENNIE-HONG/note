@@ -136,6 +136,11 @@ updateChildren: function(nextNestedChildrenElements, transaction, context) {
 ### element diff
 同一层级，diff操作：INSERT_MARKUP、MOVE_EXISTING、REMOVE_NODE;
 
+思路：2层循环，外层循环遍历新children, 内层老的，找到相同的key，可复用。 
+是否需要移动? 如何移动？  
+索引值变化趋势： 寻找过程中在旧children中所遇到最大索引值，如果发现存在比最大索引值小的节点，该节点需移动。 
+
+
 react15 部分源码：
 ```js
 _updateChildren: function(nextNestedChildrenElements, transaction, context) {
