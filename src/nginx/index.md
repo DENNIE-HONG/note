@@ -15,8 +15,8 @@ nginx在应用中的作用：
     * location
   
   
-upstream: 配置后端服务器具体地址，负载均衡。
-location： 配置请求路由，以及页面处理。
+upstream: 配置后端服务器具体地址，负载均衡。  
+location： 配置请求路由，以及页面处理。  
 例如：跨域
 前端：fe.server.com
 后端: dev.server.com
