@@ -243,10 +243,173 @@ function patch(oldVnode, vnode) {
   return vnode;
 }
 ```
-updateChildren思路；
+**updateChildren**思路；
 1. 将vnode子节点ch和oldVnode子节点oldCh提取出来
 2. oldCh和ch各有头尾变量startIdx和endIdx, 2个变量相比较，若都没匹配，如果设置了key，用key比较。一旦startIdx > endIdx,
 表明至少有一个遍历完了，则结束。
+
+
+
+示意图：
+
+```mermaid
+
+stateDiagram-v2
+    state 旧children {
+        a: a
+        [*]-->a: oldStartIdx
+        [1] --> b
+        [2]--> c
+        [3] --> d: oldEndIdx
+    }
+    state 新children {
+        d1: d
+        [*]-->d1: newStartIdx
+        b1: b
+        a1: a
+        c1: c
+        [*1]--> b1
+        [*2]--> a1
+        [*3] --> c1: newEndIdx
+    }
+```
+
+四步对比：有相同的key，即停，索引秦前移、后移一位。
+* 首首对比；
+* 尾尾对比；
+* 首尾对比；
+* 尾首对比；
+
+1. 找到尾首d-d，将d对应真实dom移动最前方。
+
+```mermaid
+stateDiagram
+    classDef notDiff stroke-dasharray: 5 5
+    state 真实DOM顺序 {
+        d
+        a
+        b
+        c
+    }
+    state 旧children {
+        a1: a
+        b1: b
+        c1: c
+        d1: d
+        [*]-->a1: oldStartIdx
+        [1] --> b1
+        [2]--> c1: oldEndIdx
+        [3]--> d1
+    }
+     state 新children {
+        d2: d
+        b2: b
+        [*]-->b2: newStartIdx
+        a2: a
+        c2: c
+        [*2]--> a2
+        [*3] --> c2: newEndIdx
+    }
+    class d1,d2 notDiff
+```
+
+2. 找到c-c，都是尾尾，不用移动，直接patch，索引前移。
+
+
+```mermaid
+stateDiagram
+    classDef notDiff stroke-dasharray: 5 5
+    state 真实DOM顺序 {
+        d
+        a
+        b
+        c
+    }
+    state 旧children {
+        [*]-->a1: oldStartIdx
+        [1] --> b1: oldEndIdx
+        a1: a
+        b1: b
+        c1: c
+        d1: d
+        
+    }
+     state 新children {
+        d2: d
+        b2: b
+        [*]-->b2: newStartIdx
+        a2: a
+        c2: c
+        [*2]--> a2: newEndIdx
+        
+    }
+    class d1,d2,c1,c2 notDiff
+```
+
+3. 首尾对比，找到a-a, a变成“最后一个子节点”，将oldStartIdx对应真实Dom移动到oldEndIdx对应真实DOM后。
+
+
+```mermaid
+stateDiagram
+    classDef notDiff stroke-dasharray: 5 5
+    state 真实DOM顺序 {
+        d
+        b
+        a
+        c
+    }
+    state 旧children {
+        a1: a
+        [*] --> b1: oldStartIdx,oldEndIdx
+        b1: b
+        c1: c
+        d1: d
+        
+    }
+     state 新children {
+        d2: d
+        b2: b
+        [*]-->b2: newStartIdx, newEndIdx
+        a2: a
+        c2: c        
+    }
+    class d1,d2,c1,c2,a1,a2 notDiff
+```
+
+4. 找到首首对，b-b, 都是第一个，不用移动,patch即可。
+
+
+#### 非理想情况下处理方式：4种。
+
+##### 1. 例如
+
+```mermaid
+stateDiagram
+    direction TB
+    state 旧 {
+        [*]--> a: oldStartIdx
+        1--> b
+        2--> c
+        3--> d: oldEndIdx
+    }
+    state 新 {
+        b1: b
+        [*]-->b1: newStartIdx
+        d1: d
+        a1: a
+        c1: c
+        [*1]--> d1
+        [*2]-->a1
+        [*3] --> c1: newEndIdx
+    } 
+```
+四步对比均没有，再旧中找到b所在索引，因为b已经在第一个。即把b对应真实DOM移到最前面。该节点置为undefined.
+
+
+
+
+
+
 
 ## 3. nextTick的实现原理
 1. vue用异步队列的方式来控制DOM更新和NnextTick回调先后执行；
