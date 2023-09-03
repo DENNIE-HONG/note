@@ -13,6 +13,9 @@ app.listen(1995);
 ```
 初始化：
 ```js
+const response = require('./response');
+const context = require('./context');
+const request = require('./request');
 // 简单伪代码
 function Application() {
   if (!(this instanceof Application)) {
@@ -56,7 +59,7 @@ app.callback = function() {
 }
 ```
 
-## koa-compose
+## koa-compose v2.5.1
 把一个个不相干的中间件串联在一起
 使用：
 ```js
@@ -91,6 +94,54 @@ function *() {
 故fn = co.wrap(function *() {
   yield * m1(m2(m3(noop)))
 });
+
+
+
+### koa-compose v4.2.0版本
+
+```js
+function compose (middleware) {
+  if (!Array.isArray(middleware)) throw new TypeError('Middleware stack must be an array!')
+  middleware = flatten(middleware)
+  for (const fn of middleware) {
+    if (typeof fn !== 'function') throw new TypeError('Middleware must be composed of functions!')
+  }
+
+  /**
+   * @param {Object} context
+   * @return {Promise}
+   * @api public
+   */
+
+  return function (context, next) {
+    // last called middleware #
+    let index = -1
+    return dispatch(0)
+    function dispatch (i) {
+      if (i <= index) return Promise.reject(new Error('next() called multiple times'))
+      index = i
+      let fn = middleware[i]
+      if (i === middleware.length) fn = next
+      if (!fn) return Promise.resolve()
+      try {
+        return Promise.resolve(fn(context, dispatch.bind(null, i + 1)));
+      } catch (err) {
+        return Promise.reject(err)
+      }
+    }
+  }
+}
+```
+
+也就是说koa-compose返回的是一个Promise，Promise中取出第一个函数（app.use添加的中间件），传入context和第一个next函数来执行。
+第一个next函数里也是返回的是一个Promise，Promise中取出第二个函数（app.use添加的中间件），传入context和第二个next函数来执行。
+第二个next函数里也是返回的是一个Promise，Promise中取出第三个函数（app.use添加的中间件），传入context和第三个next函数来执行。
+第三个...
+以此类推。最后一个中间件中有调用next函数，则返回Promise.resolve。如果没有，则不执行next函数。 这样就把所有中间件串联起来了。这也就是我们常说的洋葱模型。
+
+
+
+
 
 
 ## responsed
