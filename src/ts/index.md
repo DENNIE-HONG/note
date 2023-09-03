@@ -227,7 +227,7 @@ type Point = PartialPointX & {y: number};
 #### 类装饰器
 
 ```ts
-declare type ClassDecorator = <T Function extends Function> (target: TFunction) => TFunction | void;
+declare type ClassDecorator = <TFunction extends Function> (target: TFunction) => TFunction | void;
 
 function Greeter(target: Function): void {
     target.prototype.greet = function(): void {
@@ -258,7 +258,7 @@ function logProperty(target: any, key: string) {
         configurable: true
     });
     // property getter
-    const getter = function(tshi: any) {
+    const getter = function(this: any) {
         const currVal = this[backingField];
         console.log(`Get: ${key} => ${currVal}`);
         return currVal;
