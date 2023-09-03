@@ -37,7 +37,7 @@ module.exports = {
 伪代码：
 ```js
 app.listen = function() {
-  const server = http.createServer(this. callback());
+  const server = http.createServer(this. this.callback());
   return server.listen.apply(server, arguments);
 };
 app.callback = function() {
@@ -202,7 +202,7 @@ function co(gen) {
       gen = gen.apply(ctx, args);
     }
      // 如果不是函数 直接返回
-    if (gen || typeof gen.next !== 'function') {
+    if (!gen || typeof gen.next !== 'function') {
       return resolve(gen);
     }
     onFulfilled();
@@ -217,13 +217,24 @@ function co(gen) {
       if (value && isPromise(value)) {
         return value.then(onFulfilled, onReject);
       }
-      return onReject(new TypeError(''));
+      return onReject(new TypeError('You may only yield a function, promise, generator, array, or object, '
+        + 'but the following object was passed: "' + String(ret.value) + '"')));
     }
     function onFulfilled(res) {
       var ret;
       try {
         // 包含下一个中间件generator对象
         ret = gen.next(res);
+      } catch (e) {
+        return reject(e);
+      }
+      next(ret);
+    }
+
+    function onReject(err) {
+      var ret;
+      try {
+        ret = gen.throw(err);
       } catch (e) {
         return reject(e);
       }
