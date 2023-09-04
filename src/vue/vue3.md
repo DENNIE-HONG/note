@@ -540,3 +540,342 @@ export function trigger(
 
 
 
+## 3. Diff
+借鉴了ivi和interno. 
+
+### interno采用的核心Diff算法以及原理
+
+相同的前缀和后缀
+
+例子：
+
+```mermaid
+
+flowchart LR
+    subgraph  新children
+    direction LR
+        a1[a]~~~d~~~b1[b]~~~c1[c]
+    end
+    subgraph 旧children;
+        direction LR
+        a~~~b~~~c;
+    end
+    a1<-->a
+    b1<-->b
+    c1<-->c
+```
+j: 新旧children中第一个节点索引；
+prevEnd: 旧children最后一个节点索引；
+nextEnd: 新children最后一个节点索引；
+
+1. j > prevEnd, 并且j <= nextEnd   
+旧已全更新，新的仍有剩余。 
+2. j > nextEnd, 并且j <= prevEnd, 旧children中j到prevEnd
+间节点应该删除。 
+
+伪代码：
+
+```js
+
+let j = 0; // 指向新旧children中第一个节点
+let prevVNode = prevChildren[j];
+let nextVNode = nextChildren[j];
+// 循环直到遇到不同key节点
+outer: {
+    // 更新相同后缀节点
+    let prevEnd = prevChildren.length - 1;
+    let nextEnd = nextChildren.length - 1;
+    prevVNode = prevChildren[prevEnd];
+    nextVNode = nextChildren[nextEnd];
+    while(prevVNode.key === nextVNode.key) {
+        patch(prevVNode, nextVNode, container);
+        j++;
+        if (j > prevEnd || j > nextEnd) {
+            break outer;
+        }
+        prevVNode = prevChildren[j];
+        nextVNode = nextChildren[j];
+    }
+    while (prevVNode.key === nextVNode.key) {
+        patch(prevVNode, nextVNode, container);
+        prevEnd--;
+        nextEnd--;
+        if (j > prevEnd || j > nextEnd) {
+            break outer;
+        }
+        prevVNode = prevChildren[prevEnd];
+        nextVNode = nextChildren[nextEnd];
+    }
+}
+// 满足条件， j -> nextEnd之间应插入
+if (j > prevVNode && j <= nextEnd) {
+    // 所有新节点插入到位于nextPos节点前面
+    const nextPos = nextEnd + 1;
+    const refNode = nextPos < nextChildren.length ? nextChildren[nextPos].el : null;
+    // 挂载
+    while (j <= nextEnd) {
+        mount(nextChildren[j++], container, false, refNode);
+    }
+} else if (j > nextEnd) {
+    // j-> prevEnd之间节点移除
+    while(j <= prevEnd) {
+        container.removeChild(prevChildren[j++].el);
+    }
+} else {
+    const nextLeft = nextEnd - j + 1; // 新中未被处理
+    const source = [];
+    for (let i = 0; i < nextLeft; i++) {
+        source.push(-1);
+    }
+    ...
+}
+```
+
+
+判断是否需要进行dom移动。
+例如：
+
+```js
+     0    1   2    3    4   5
+          ↓             ↓
+旧   a    b   c    d    f   e
+     |                      |
+新   a    c   d    b    g   e
+          ↑            ↑
+
+
+indexMap = {c: 1, d: 2, b: 3, g: 4}
+source =   [2     3     2     -1]
+```
+
+source: 未被patch的节点在旧children中的位置，-1代表该节点不存在旧的中。 
+确定source一般用2层循环，引用indexMap降低时间复杂度。  
+indexMap的key: 节点的key  
+值： 在新children中的索引 
+=> 快读定位新children中具有相同key的节点位置
+
+用k 遍历新children中遇到的节点索引；
+pos： 存遇到索引最大值；
+moved: 后来遇到索引更小，即 k < pos , 需移动。
+
+伪代码：
+
+```js
+const prevStart = j;
+const nextStart = j;
+let moved = false;
+let pos = 0;
+// 构建索引表
+const keyIndex = {};
+let patched = 0; // 更新过数据
+for (let i = nextStart; i <= nextEnd; i++) {
+    keyIndex[nextChildren[i].key] = i;
+}
+
+// 遍历旧children中剩余未处理节点
+for (let i = prevStart; i <= prevEnd; i++) {
+    prevVNode = prevChildren[i];
+    // 通过索引表快速找到相同key的节点位置
+    if (patched < nextLeft) {
+        const k = keyIndex[prevVNode.key];
+        if (k !== 'undefined') {
+            nextVNode = nextChildren[k];
+            patch(prevVNode, nextVNode, container);
+            patched++;
+            // 更新source数组
+            source[k-nextStart] = i;
+            // 是否需要移动
+            if (k < pos) {
+                moved = true;
+            } else {
+                pos = k;
+            }
+        } else {
+            // 没找到
+            container.removeChild(prevVNode.el);
+        }
+    } else {
+        // 多余节点，应移除
+        container.removeChild(prevVNode.el);
+    }
+}
+
+// b有了， patched： 1
+// c有了，patched: 2
+// d 有了， patched: 3
+// f 找不到remove
+```
+
+#### 怎么移动？
+
+source => 最长递增子序列，用于DOM移动。  
+
+最长递增子序列：[0, 8, 4, 12]
+即[0, 8, 12] or [0, 4, 12]
+
+例子：
+```js
+                                 ↓ i
+                0     1    2     3    
+                __________________
+新children   a  |c    d    b    g | e
+                ——————————————————
+source         [ 2    3    1    -1]
+lis            [0     1]
+                      ↑j
+
+```
+
+剩余节点重新编号 0-3.  
+[0 1]： 新chidlren剩余未处理节点， 0和1节点先后关系与旧children中相同， 即c和d不用移动。  
+
+* i： 新children未处理节点最后一个节点位置
+* j：最长递增子序列数组最后一个位置，i 与 Lis[j] 是否相等
+    * 不同移动
+    * 相同，不移动，j指向下一位置
+* source[-1]: 挂载节点
+
+```js
+                          ↓ i
+                0     1    2     3    
+                __________________
+新children   a  |c    d    b    g | e
+                ——————————————————
+source         [ 2    3    1    -1]
+lis            [0     1]
+                      ↑j
+
+```
+b的i = 2 => 2 !== Lis[j], 移动。  
+找到b节点后一个节点g，将其插入到g前面。
+
+```js
+                    ↓ i
+                0     1    2     3    
+                __________________
+新children   a  |c    d    b    g | e
+                ——————————————————
+source         [ 2    3    1    -1]
+lis            [0     1]
+                      ↑j
+
+```
+i = Lis[j], 不用移动，j--,以此类推。 
+
+伪代码
+
+```js
+if (moved) {
+    const seq = lis(source);
+    // j指向最长递增子序列最后一个位置
+    let j = seq.length - 1;
+    // 从后向前遍历 新children中剩余节点
+    for (let i = nextLeft -1; i >=0; i--) {
+        if (source[i] === -1) {
+            // 全新节点
+            const pos = i + nextStart;
+            const nextVNode = nextChildren[pos];
+            // 该节点下一个节点位置索引
+            const nextPos = pos + 1;
+            mount(nextVNode, container, false, nextPos < nextChildren.length ? nextChildren[nextPos].el: null);
+        } else if (i !== seq[j]) {
+            // 移动
+            // 该节点在新children中真实索引
+            const pos = i + nextStart;
+            const nextVNode = nextChildren[pos];
+            // 该节点下一个节点位置索引
+            const nextPos = pos + 1;
+            container.insertBefore(nextVNode.el, 
+            nextPos < nextChildren.length 
+            ? nextChildren[nextPos].el: null);
+        } else {
+            // 位置节点不用移动, j指向下一个
+            j--;
+        }
+    }
+}
+
+```
+
+#### 最长递增子序列
+例如：[0, 8, 4, 12, 2, 10]
+取出最后一个数，单独作为一个序列[10]
+[10]的递增子序列为其本身
+
+```
+ 0  8   4 12 2 10
+ _________________
+|1 |1 |1 |1 |1 |1 |
+ ——————————————————
+```
+每个数字分配一个格子，填充1. 
+格子：所对应数字为开头的递增子序列的最大长度。 
+[2, 10] 可看做[2] + [10], 长度为 1+ 1 =2.
+
+```
+ 0  8   4 12 2 10
+ _________________
+|1 |1 |1 |1 |2 |1 |
+ ——————————————————
+```
+
+[12, 2, 10]： 不变。
+[4, 12, 2, 10]：
+```
+ 0  8   4 12 2 10
+ _________________
+|1 |1 |2 |1 |2 |1 |
+ ——————————————————
+```
+
+1. 拿格子对应数字a 与其后面所有格子对应数字b比较， a < b 时候，用数字b对应格子中的值加1，填到a对应格子。
+2. 只当计算出的值 > a 所对应格子中的值，才更新。
+
+
+```
+ 0  8   4 12 2 10
+ _________________
+|3 |2 |2 |1 |2 |1 |
+ ——————————————————
+```
+格子中最大值 = 递增子序列最大长度  = 3；且以0开头。  
+找到格子中对应2的值： 8， 4， 2  
+如找到4： [0, 4]  
+找到格子中对应1的值： 12， 10
+[0, 4, 12] ,答案并非一个。 
+
+最长递增子序列的长度：o(n * n)
+
+```js
+export default function deLongestIncreasingSubsequence(sequence) {
+    // 先格子填1
+    const lengthsArray = Array(sequence).fill(1);
+    let prevIdx = 0;
+    let currIdx = 1; // 当前元素索引
+    while (currIdx < sequence.length) {
+        // 前一个比较小
+        if (sequence[prevIdx] < sequence[currIdx]) {
+            const newLen = lengthsArray[prevIdx] + 1;
+            // 新长度大于当前格子中的值才更新
+            if (newLen > lengthsArray[currIdx]) {
+                lengthsArray[currIdx] = newLen;
+            }
+        }
+        // 以前格子索引后移
+        prevIdx += 1;
+        if (prevIdx === currIdx) {
+            // 对比完了，当前索引后移
+            currIdx += 1;
+            prevIdx = 0;
+        }
+    }
+    // 找出格子中最大的数即是最长递增子序列的长度
+    let longestIncreasingLength = 0;
+    for (let i = 0; i < lengthsArray.length; i+=1) {
+        if (lengthsArray[i] > longestIncreasingLength) {
+            longestIncreasingLength = lengthsArray[i];
+        }
+    }
+    return longestIncreasingLength;
+}
+```
