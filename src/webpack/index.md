@@ -932,7 +932,7 @@ await import(/* webpack ChunkName: "lodash" */ /* webackPrefetch: true */ 'lodas
 ```
 父chunk完成加载后，webpack在闲时加载lodash文件。
 区别：
-* preload: chunk再父chunk加载时，并行加载；
+* preload: chunk在父chunk加载时，并行加载；
 * prefetch：chunk在父chunk加载结束后开始加载；
 * preload：中等优先级，并立即下载；
 * prefetch: 浏览器闲时下载；
@@ -940,7 +940,7 @@ await import(/* webpack ChunkName: "lodash" */ /* webackPrefetch: true */ 'lodas
 
 
 
-Q: hash、chunkHash、contenthash有什么不同？
+Q: hash、chunkHash、contenthash有什么不同？  
 A:
 * hash: 计算是跟整个项目的构建有关，只改动了某一文件，但文件都是用同一份hash，hash变化，缓存失效。
 * chunkHash: 为了解决这个问题，根据入口文件进行依赖解析，构建对应的chunk，生成对应哈希值。
