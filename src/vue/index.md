@@ -19,7 +19,7 @@
     }
     // 添加订阅者
     addWatcher(watcher) {
-      this.watchers.push(watcher)
+      this.watchers.push(watcher);
     }
     // 通知所有订阅者，触发订阅者相应逻辑处理
     notify() {
@@ -45,11 +45,9 @@
       emumerable: true,
       configurable: true,
       get: () => {
-        // 如果有target，将其添加到dep实例的subs中
+        // 如果有target，将其添加到dep实例的watchers中
         // watcher实例化会读data属性，触发get方法
-        if (Dep.target) {
-          dep.depend();
-        }
+        Dep.target && dep.depend();
         return val;
       }
       set: (newVal) => {
