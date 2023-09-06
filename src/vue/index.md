@@ -114,6 +114,8 @@
   }
 ```
 
+![数据响应式](../../public/vue.png)
+
 ### Array怎么进行侦测？
 原理：继承原型，对继承后对象使用Object.defineProperty做拦截操作。
 简要代码：
