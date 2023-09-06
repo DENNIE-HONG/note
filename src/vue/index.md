@@ -134,7 +134,7 @@ class Observe {
     ...
     const arrayProto = Array.prototype;
     const arrayMethods = Object.create(arrayProto);
-    ['psuh', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse'].forEach(function(method) {
+    ['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse'].forEach(function(method) {
       const original = arrayProto[method];
       def(arrayMethods, method, function mutator(...args) {
         const result = original.apply(this, args);
@@ -180,10 +180,10 @@ class Observe {
 
 ```mermaid
 graph TB;
-    被订阅者setter---Dep[Dep.notify]---Patch["Patch(oldVnode, Vnode)"]---S{isSameVnode};
+    被订阅者setter---Dep[Dep.notify]---Patch["Patch(oldVnode, vnode)"]---S{isSameVnode};
 
     S--Yes---patchVnode;
-    S--No---replace---r[return Vnode];
+    S--No---replace---r[return vnode];
 
     patchVnode---子[oldVnode有子节点\n Vnode没有];
     patchVnode---v[oldVnode没有子节点\n Vnode有];
@@ -711,7 +711,7 @@ function initComputed(vm, computed) {
 export function defineComputed(target, key, userDef) {
   // 创建set get 方法
   sharedPropertyDefinition.get = createComputedGetter(key);
-  sharedPropertyDefinition.get = noop;
+  sharedPropertyDefinition.set = noop;
   ...
   // 创建属性vm.计算属性，并初始化getter setter
   Object.defineProperty(target, key, sharedPropertyDefinition);
@@ -1014,7 +1014,7 @@ const VNodeFlags = {
     PORTAL: 1 << 8
 }
 
-VNode.ELEMENT = VNodeFlags.ELEMENT_HTML | VNode.ELEMENT.SVG;
+VNodeFlags.ELEMENT = VNodeFlags.ELEMENT_HTML | VNode.ELEMENT.SVG;
 // 按位运算
 ```
 
