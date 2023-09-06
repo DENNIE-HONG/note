@@ -38,7 +38,7 @@ url改变：
 ```js
 class Router {
   constructor() {
-    this.routes = [];
+    this.routes = {};
     this.currentUrl = '';
   }
   route(path, callback) {
@@ -66,7 +66,7 @@ class Router {
     this.bindLink();
     window.addEventListener('popstate', (e) => {
       this.updateView(window.location.pathname);
-    });
+    }, false);
     window.addEventListener('load', () => {
       this.updateView('/');
     }, false);
@@ -101,7 +101,7 @@ export function initUse(Vue: GlobalAPI) {
         }
         // 获取第一个参数plugins以外参数
         const args = toArray(arguments, 1);
-        // 将Vue实例添加到参数
+        // 将Vue实例添加到参数开头
         args.unshift(this);
         // 执行plugin的install方法，每个install方法第一个参数是vue实例
         if (typeof plugin.install === 'function') {
@@ -130,7 +130,7 @@ export function install(Vue) {
     const isDef = v => v !== undefined;
     const registerInstance = (vm, callVal) => {
         let i = vm.$options._parentVode;
-        if (isDef(i) && isDef(i = i.data) && isDef(i = registerRouteInstance)) {
+        if (isDef(i) && isDef(i.data) && isDef(i = registerRouteInstance)) {
             i(vm.callVal);
         }
     }
@@ -333,7 +333,7 @@ function createRouteMap(
 
 ```
 
-addRouteRecord部分源码：
+**addRouteRecord**部分源码：
 
 ```js
 // 解析路径
@@ -374,7 +374,7 @@ graph TB;
 
 V["Vue.use(Router)(Vue.use(plugin))"]-->install["installPlugin保存 \n plugin.install(vue实例)"]-->installjs["Vue-Router的install.js \n 1. Vue.mixin({ \n     #nbsp;#nbsp;beforeCreate() {...} \n       #nbsp; destroy() {...} \n }); \n 2. VueRouter实例对象响应化 \n 3. Vue.prototype加入$router、$route \n 4. 注册RouterView、Router Link "]-->n["new Router(options)"]-->Matcher["1. createMatcher(routes) \n 2. 确定mode\n 3. new 实例化history对象"];
 
-installjs-->router实例的init方法-->拿到history实例调用transitionTo进行路由过度-->this["this.matcher.match()方法匹配"]-->根据传入的raw和当前路径crrrentRoute,返回新的路径;
+installjs-->router实例的init方法-->拿到history实例调用transitionTo进行路由过渡-->this["this.matcher.match()方法匹配"]-->根据传入的raw和当前路径crrrentRoute,返回新的路径;
 
 Matcher-->createRoute["createRouteMap(routes)返回 match方法和addRoutes"]-->遍历routes调用addRouteRecord方法-->record["创建record对象 \n pathList: [所有path] \n pathMap: {path: record} \n nameMap: {name: record}"]
 
