@@ -11,20 +11,20 @@
   class Dep {
     constructor () {
       this.id = uid ++; // 区分新的watcher和只改变值产生的watcher
-      this.subs = [];
+      this.watchers = [];
     }
     // 触发target上的watcher中的addDep方法
     depend() {
       Dep.target.addDep(this);
     }
     // 添加订阅者
-    addSub(sub) {
-      this.subs.push(sub);
+    addWatcher(watcher) {
+      this.watchers.push(watcher)
     }
     // 通知所有订阅者，触发订阅者相应逻辑处理
     notify() {
-      this.subs.forEach((sub) => {
-        sub.update();
+      this.watchers.forEach((watcher) => {
+        watcher.update();
       })
     }
   }
@@ -40,7 +40,7 @@
   function defineReative(obj, key, val) {
     const dep = new Dep();
     // 给当前属性添加监听
-    let childObj = observe(val);
+    observe(val);
     Object.defineProperty(obj, key, {
       emumerable: true,
       configurable: true,
@@ -58,7 +58,7 @@
         }
         val = newVal;
         // 对新值监听
-        childObj = observe(newVal);
+        observe(newVal);
         dep.notify();
       }
     })
@@ -93,7 +93,7 @@
     addDep(dep) {
       // 避免同id的watcher被多次存储
       if (!this.depIds.hasOwnProperty(dep.id)) {
-        dep.addSub(this);
+        dep.addWatcher(this);
         this.depIds[dep.id] = dep;
       }
     }
