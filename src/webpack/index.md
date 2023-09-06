@@ -56,7 +56,8 @@ webpack是一个模块打包器，可以用loader和plugin扩展，基于tapable
 
 
 ### loader
-loader是一个node模块，导出一个函数，获得处理前的原内容，对原内容执行处理后，返回处理后的内容。
+webpack中提供了一种处理多种文件格式的机制，这便是Loader。 我们可以把Loader当成一个转换器，它可以将某种格式的文件转换成Wwebpack支持打包的模块。  
+我们常见的Javascript、CSS、Less、Typescript、Jsx、图片等文件都是模块，不同模块的加载是通过模块加载器来统一管理的，当我们需要使用不同的 Loader 来解析不同类型的文件。  
 多个loader串联使用，执行顺序是最后一个到第一个：
 * 最后loader首先调用，参数是source；
 * 第一个loader最后调用，返回js代码；
@@ -459,7 +460,7 @@ order.queryGoods('10000', 1);
 
 通过tap添加消费者，通过call来触发钩子的顺序执行。
 ```js
-order.hooks.onsumer.tapAsync('LoginCheckPlugin', (userId, orderId, callback) => {
+order.hooks.consumer.tapAsync('LoginCheckPlugin', (userId, orderId, callback) => {
     LoginCheck(usesrId, callback);
 });
 ```
@@ -863,7 +864,7 @@ window["webpackHotUpdate"] = function(chunkId, moreModules) {
 
 function hotAddUpdateChunk(chunkId, moreModules) {
     for (var moduleId in moreModules) {
-        if (Object.prototype.haSOwnProperty.call(moreModules, moduleId)) {
+        if (Object.prototype.hasOwnProperty.call(moreModules, moduleId)) {
             hotUpdate[moduleId] = moreModules[moduleId];
         }
     }
