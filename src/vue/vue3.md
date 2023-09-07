@@ -446,7 +446,7 @@ graph TB
     proxy-->set
     proxy-->get-->track--通过target和key2层映射建立dep-->dep[找到对应dep]
 
-    effect["effect()"]-->renderEffect-->rt[renderComponentRoot \n 触发render方法]-->D[解析表达式，替换真实data \n 下的属性，触发get]
+    effect["effect()"]-->renderEffect-->rt[renderComponentRoot \n 触发render方法]-->D[解析表达式，替换真实data \n 下的属性,触发get]
 
     D--触发get-->get
     renderEffect<--"建立双向关联\n 将当前renderEffect存入dep中\n 将dep存入当前effect的deps中"-->dep
