@@ -440,7 +440,7 @@ readonly--否-->B["深度响应式reactive(res)"];
 **依赖收集阶段**
 
 ```mermaid
-graph TD
+graph TB
 
     reactive["reactive()"]-->proxy
     proxy-->set
