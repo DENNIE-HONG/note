@@ -183,16 +183,14 @@ export default {
         function increate() {
             state: a++
         }
-
+        const double = computed(() => state.a + 3);
         return {
             state,
-            increate
+            increate,
+            double
         }
     }
 }
-
-//...
-const double = computed(() => state.a + 3);
 ```
 
 ### 生命周期钩子对比
@@ -251,13 +249,13 @@ export function reactive(target: object) {
 ```js
 const collectionTypes = new Set<Function>([Set, Map, WeakMap, WeakSet]);
 
-function createReactiveObject() {
+function createReactiveObject(
     target: unknow,
     toProxy: WeakMap<any, any>,
     toRaw: WeakMap<any, any>,
     baseHandlers: ProxyHandler<any>,
     collectionLHandlers: ProxyHander<any>
-} {
+) {
     // 目标对象是否被effect
     let observed = toProxy.get(target);
     if (observed !== void 0) {
@@ -335,7 +333,7 @@ const mountComponent: MountComponentFn = (
 
 ```js
 // 构建渲染effect
-const setupRenderEffect: setupRenderEffectFn = (
+const setupRenderEffect: SetupRenderEffectFn = (
     instance,
     initialVNode,
     container,
@@ -442,16 +440,16 @@ readonly--否-->B["深度响应式reactive(res)"];
 **依赖收集阶段**
 
 ```mermaid
-graph TD;
+graph TD
 
-    reactive["reactive()"]-->proxy;
-    proxy-->set;
-    proxy-->get-->track--通过target和key2层映射建立dep-->dep[找到对应dep];
+    reactive["reactive()"]-->proxy
+    proxy-->set
+    proxy-->get-->track--通过target和key2层映射建立dep-->dep[找到对应dep]
 
-    effect["effect()"]-->renderEffect-->rt[renderComponentRoot \n 触发render方法]-->D[解析表达式，替换真实data \n 下的属性，触发get];
+    effect["effect()"]-->renderEffect-->rt[renderComponentRoot \n 触发render方法]-->D[解析表达式，替换真实data \n 下的属性，触发get]
 
-    D--触发get-->get;
-    renderEffect<--"建立双向关联\n 将当前renderEffect存入dep中\n 将dep存入当前effect的deps中"-->dep;
+    D--触发get-->get
+    renderEffect<--"建立双向关联\n 将当前renderEffect存入dep中\n 将dep存入当前effect的deps中"-->dep
 
 
 ```
