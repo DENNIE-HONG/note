@@ -563,13 +563,13 @@ flowchart LR
     b1<-->b
     c1<-->c
 ```
-j: 新旧children中第一个节点索引；
-相同的前缀节点，不用移动，只要patch；
-prevEnd: 旧children最后一个节点索引；
+j: 新旧children中第一个节点索引；  
+相同的前缀节点，不用移动，只要patch；  
+prevEnd: 旧children最后一个节点索引；  
 nextEnd: 新children最后一个节点索引；
 
 1. j > prevEnd, 并且j <= nextEnd   
-旧已全更新，新的仍有剩余。 
+旧已全更新，新的仍有剩余。  
 2. j > nextEnd, 并且j <= prevEnd, 旧children中j到prevEnd
 间节点应该删除。 
 
@@ -608,7 +608,7 @@ outer: {
     }
 }
 // 满足条件， j -> nextEnd之间应插入
-if (j > prevVNode && j <= nextEnd) {
+if (j > prevEnd && j <= nextEnd) {
     // 所有新节点插入到位于nextPos节点前面
     const nextPos = nextEnd + 1;
     const refNode = nextPos < nextChildren.length ? nextChildren[nextPos].el : null;
@@ -616,13 +616,13 @@ if (j > prevVNode && j <= nextEnd) {
     while (j <= nextEnd) {
         mount(nextChildren[j++], container, false, refNode);
     }
-} else if (j > nextEnd) {
+} else if (j > nextEnd && j <= prevEnd) {
     // j-> prevEnd之间节点移除
     while(j <= prevEnd) {
         container.removeChild(prevChildren[j++].el);
     }
 } else {
-    const nextLeft = nextEnd - j + 1; // 新中未被处理
+    const nextLeft = nextEnd - j + 1; // 新中未被处理个数
     const source = [];
     for (let i = 0; i < nextLeft; i++) {
         source.push(-1);
@@ -700,9 +700,9 @@ for (let i = prevStart; i <= prevEnd; i++) {
     }
 }
 
-// b有了， patched： 1
-// c有了，patched: 2
-// d 有了， patched: 3
+// b有了， patched： 1，source: [-1, -1, 1, -1]
+// c有了，patched: 2, source: [2, -1, 1, -1]
+// d 有了， patched: 3, source: [2, 3, 1, -1]
 // f 找不到remove
 ```
 
@@ -771,28 +771,53 @@ if (moved) {
     let j = seq.length - 1;
     // 从后向前遍历 新children中剩余节点
     for (let i = nextLeft -1; i >=0; i--) {
+        // 全新节点
+        const pos = i + nextStart;
+        // 该节点下一个节点位置索引
+        const nextPos = pos + 1;
+        const nextVNode = nextChildren[pos];
+        //DOM节点
+        const refNode = nextPos >= nextChildren.length ? null : nextChildren[nextPos].el;
         if (source[i] === -1) {
-            // 全新节点
-            const pos = i + nextStart;
-            const nextVNode = nextChildren[pos];
-            // 该节点下一个节点位置索引
-            const nextPos = pos + 1;
-            mount(nextVNode, container, false, nextPos < nextChildren.length ? nextChildren[nextPos].el: null);
+            mount(nextVNode, container, false, refNode);
         } else if (i !== seq[j]) {
             // 移动
-            // 该节点在新children中真实索引
-            const pos = i + nextStart;
-            const nextVNode = nextChildren[pos];
-            // 该节点下一个节点位置索引
-            const nextPos = pos + 1;
-            container.insertBefore(nextVNode.el, 
-            nextPos < nextChildren.length 
-            ? nextChildren[nextPos].el: null);
+            container.insertBefore(nextVNode.el, refNode);
         } else {
             // 位置节点不用移动, j指向下一个
             j--;
         }
     }
+} else {
+    ...
+}
+
+```
+
+
+#### 不用移动
+
+
+
+```js
+if (moved) {
+    ...
+} else {
+     //不需要移动
+    for (let i = nextLeft - 1; i >= 0; i--) {
+      // 当前source的值，用来判断节点是否需要移动
+      let cur = source[i]; 
+    
+      if (cur === -1) {
+        let pos = nextStart + i; // 对应新列表的index
+        const nextNode = nextChildren[pos];	// 找到vnode
+        // 下一个节点的位置，用于移动DOM
+        const nextPos = pos + 1;
+        const refNode = nextPos >= nextChildren.length ? null : nextChildren[nextPos].el; //DOM节点
+      	mount(nextNode, parent, refNode)
+      }
+    }
+  }
 }
 
 ```
