@@ -539,11 +539,12 @@ export function trigger(
 
 
 ## 3. Diff
-借鉴了ivi和interno. 
+借鉴了ivi和inferno. 
 
-### interno采用的核心Diff算法以及原理
+### inferno采用的核心Diff算法以及原理
 
-相同的前缀和后缀
+* 前置和后置的预处理
+* 最长递增子序列
 
 例子：
 
@@ -563,6 +564,7 @@ flowchart LR
     c1<-->c
 ```
 j: 新旧children中第一个节点索引；
+相同的前缀节点，不用移动，只要patch；
 prevEnd: 旧children最后一个节点索引；
 nextEnd: 新children最后一个节点索引；
 
@@ -576,15 +578,13 @@ nextEnd: 新children最后一个节点索引；
 ```js
 
 let j = 0; // 指向新旧children中第一个节点
+let prevEnd = prevChildren.length - 1;
+let nextEnd = nextChildren.length - 1;
 let prevVNode = prevChildren[j];
 let nextVNode = nextChildren[j];
 // 循环直到遇到不同key节点
 outer: {
-    // 更新相同后缀节点
-    let prevEnd = prevChildren.length - 1;
-    let nextEnd = nextChildren.length - 1;
-    prevVNode = prevChildren[prevEnd];
-    nextVNode = nextChildren[nextEnd];
+    // 更新相同前缀节点
     while(prevVNode.key === nextVNode.key) {
         patch(prevVNode, nextVNode, container);
         j++;
@@ -594,6 +594,8 @@ outer: {
         prevVNode = prevChildren[j];
         nextVNode = nextChildren[j];
     }
+    prevNode = prevChildren[prevEnd]
+    nextNode = prevChildren[nextEnd]
     while (prevVNode.key === nextVNode.key) {
         patch(prevVNode, nextVNode, container);
         prevEnd--;
