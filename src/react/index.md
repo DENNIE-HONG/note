@@ -112,7 +112,144 @@ graph TB
 
 
 
-## 5. diff算法
+
+## 5. 组件的实现与挂载
+```js
+<A />
+```
+属性：
+* $$typeof: Symbol(react.element)
+* key: null
+* props: {}
+* ref: null
+* type: f A(props)
+* _owner: null(创建当前组件的对象，默认是null)
+* _store: {validated: false}
+
+```js
+function ReactComponent(props, context, updater) {
+    this.props = props;
+    this.context = context;
+    this.refs = emptyObject;
+    this.updater = updater || ReactNoopUpdateQueue;
+}
+ReactComponent.prototype.setState = function() {
+    ...
+}
+```
+### 组件的挂载
+| Node     | 实际参数    |    结果        |
+| ---------|------------|---------------|
+|null or false |空|ReactEmptyComponent|
+|object && type === string| 虚拟DOM|ReactDomComponent|
+|object && type !== string|React组件|ReactCompositeComponent|
+|string|字符串|ReactTextComponent|
+|number|数字|ReactTextComponent|
+
+```js
+ ________
+|_context|\
+|_props__|\\
+|_refs___|\\\
+           \\\
+            \\\______________      __________      __setState
+            |_ReactComponent_|————|prototype_|————|
+ __________/______________  |      ——————————      ——forceUpdate
+|updator(ReactUpdateQueue)| |
+ —————————————————————————  |
+                            ↓
+                    ———————————————————
+                   |执行ReactElement方法|
+                    ———————————————————
+                            ↓
+            ——————————————————————————————————————
+           | 创建ReactElement类型的js对象 === <A /> |
+            ——————————————————————————————————————
+               ______________↓__________________
+              |ReactDom.render(<A />, container)|
+               —————————————————————————————————
+                            ↓                     |————ReactDomEmptyComponent
+             __________________________________   |————ReactDomComponent            ______________________________
+            |根据<A />类型，内部封装为四大类型组件|——|————ReactCompositeComponent  -->| 解析ReactElement对对象获得HTML |
+             ——————————————————————————————————   |___ReactTextComponent            ——————————————————————————————
+                                                                                                ↓
+                                                                                        ___________________
+                                                                                       | 将HTML插入真实DOM中 |
+                                                                                        ———————————————————
+```
+
+
+
+
+ReactDom.render -> ReactMount.render -> ReactMount._renderSubtreeIntoContainer
+
+伪代码:
+```js
+/**
+ * @param parentComponent 当前组件父组件，第一次null
+ * @param nextElement 要插入DOM的组件
+ * @param callback 完成后回调
+ * @param container 要插入的容器
+*/
+_renderSubtreeIntoContainer: function(parentComponent, nextElement, container, callback) {
+    // 当前组件添加到前一级的props
+    var nextWrapperdElement = ReactElement(TopLevelWrapper, null, null, null ,null, null, nextElement);
+    var prevComponent = getTopLevelWrapperIntoContainer(container);
+    // 判断当前容器下是否存在组件, 即preComponent
+    // 如果true，执行更新流程，若不存在，则卸载
+    if (prevComponent) {
+        var preWrappedElement = preComponnet._currentElement;
+        var preElement = preWrappedElement.props;
+        // 组件更新机制在生命周期部分进行解析
+        if (shouldUpdateReactComponent(preElement, nextElement)) {
+            var publicInst = prevComponent._renderedComponent.getPublicInstance();
+            var updatedCallback = callback && function () {
+                callback.call(publicInst);
+            }
+        }
+        ReactMount._updateRootComponent(preComponent, nextWrappedElement, nextContext, container, updatedCallback);
+    } else {
+        // 卸载
+        ReactMount.unmountComponentAtNode(container);
+    }
+}
+
+// 不管更新or卸载，均要求挂载到真实dom上
+_renderNewRootComponent: function(nextElement, container, shouldReuseMarkup, context) {
+    var componentInstance = instantiateReactComponent(nextElement, false);
+    ReactUpdates.batchedUpdates(batchedMountComponentIntoNode, componnetInstance, container, shouldReuseMarkup, context);
+    // 方法返回组件对应的html， 记为变量markup
+    var wrapperID = componentInstance._instance.rootID;
+    instanceByReactRootID[wrapperID] = componentInstance;
+    return componentInstance;
+}
+_mountImageIntoNode = function (markup, container, instance, shouldReuseMarkup, transaction) {
+    setInnerHTML(container, markup);
+    ReactDOMComponentTree.precacheNode(instance, container, firstChild);
+}
+function instaniateReactComponent(node, shouldHaveDebugID) {
+    var instance;
+    if (node === null || node === false) {
+        instance = ReactEmptyComponent.create(instaniateReactComponent);
+    } else if (typeof node === "object") {
+        var element = node;
+        if (typeof element.type === 'string') {
+            instance = ReactHostComponet.createInternalComponnet(element);
+        } else if (isInteralComponentType(element.type)) {
+            instance = new Elementtype(element);
+        } else {
+            instance = new ReactCompositeComponentWrapper(element);
+        }
+    } else if (typeof node === 'string' || typeof node === 'number') {
+        instance = ReactHostComponent.createInstanceForText(node);
+    }
+    return instance;
+}
+```
+
+
+
+## 6. diff算法
 
 ### diff策略
 通过制定大胆的策略，将O(n^3)复杂度的问题转换成O(n)复杂度的问题。
@@ -243,6 +380,13 @@ _unmountChild: function(child, node) {
 
 简易代码：
 ```js
+function placeSingleChild(fiber: FiberNode) {
+    if (shouldTrackEffects && fiber.alternate === null) {
+        fiber.flags |= Placement;
+    }
+    return fiber;
+}
+
 // 根据newChild类型选择不同diff函数处理
 function reconcileChildFibers(
     returnFier: Fiber,
@@ -255,15 +399,23 @@ function reconcileChildFibers(
         // 可能是react_element_type or react_portal_type
         switch(newChild.$typeof) {
             case REACT_ELEMENT_TYPE:
-                //...
+                return placeSingleChild(
+					reconcileSingleElement(returnFiber, currentFiber, newChild)
+				);
+            default:
+				break;
         }
     }
     if (typeof newChild === 'string' || typeof newChild === 'number') {
         // 调用reconcileSingleTextNode 处理
+        return placeSingleChild(
+			reconcileSingleTextNode(returnFiber, currentFiber, newChild)
+		);
     }
 
     if (isArray(newChild)) {
         // 调用reconcileChildrenArray 处理
+        return reconcileChildrenArray(returnFiber, currentFiber, newChild);
     }
     // ...
     // 如果没有命中，删除节点
@@ -275,10 +427,39 @@ function reconcileChildFibers(
 
 简易代码：
 ```js
+
+function deleteChild(returnFiber: FiberNode, childToDelete: FiberNode) {
+    if (!shouldTrackEffects) {
+        return;
+    }
+    const deletions = returnFiber.deletions;
+    if (deletions === null) {
+        returnFiber.deletions = [childToDelete];
+        returnFiber.flags |= ChildDeletion;
+    } else {
+        deletions.push(childToDelete);
+    }
+}
+
+function deleteRemainingChildren(
+	returnFiber: FiberNode,
+    currentFirstChild: FiberNode | null
+) {
+    if (!shouldTrackEffects) {
+        return;
+    }
+    let childToDelete = currentFirstChild;
+    while (childToDelete !== null) {
+        deleteChild(returnFiber, childToDelete);
+        childToDelete = childToDelete.sibling;
+    }
+}
+
+// 对比单个element节点
 function reconcileSingleElement(
     returnFiber: Fiber,
     currentFirstChild: Fiber | null,
-    element: ReactElement
+    element: ReactElementType
 ): Fiber {
     const key = element.key;
     let child = currentFirstChild;
@@ -286,27 +467,72 @@ function reconcileSingleElement(
     while(child !== null) {
         // 可复用吗
         if (child.key === key) {
-            switch(child.tag) {
-                //...
-                default: {
-                    // type也一样，可以复用
-                    if (child.elementType === element.type) {
-                        return existing;
+            if (element.$$typeof === REACT_ELEMENT_TYPE) {
+                if (currentFiber.type === element.type) {
+                    let props = element.props;
+                    if (element.type === REACT_FRAGMENT_TYPE) {
+                        props = element.props.children;
                     }
-                    // ...
-                    // type不同，跳出循环
-                    break;
+                    // type相同
+                    const existing = useFiber(currentFiber, props);
+                    existing.return = returnFiber;
+                    // 当前节点可复用，标记剩下的节点删除
+                    deleteRemainingChildren(returnFiber, currentFiber.sibling);
+                    return existing;
                 }
+
+                // key相同，type不同 删掉所有旧的
+                deleteRemainingChildren(returnFiber, currentFiber);
+                break;
+			} else {
+                //
+                console.warn('还未实现的react类型', element);
+                break;
             }
-            // 不能复用,标记为删除
-            deleteRemainingChildren(returnFiber, child);
-            break;
         } else {
+            // key不同，删掉旧的
             deleteChild(returnFiber, child);
         }
         child = child.sibling;
     }
     // 创建新Fiber，并返回
+    // 根据element创建fiber
+    let fiber;
+    if (element.type === REACT_FRAGMENT_TYPE) {
+        fiber = createFiberFromFragment(element.props.children, key);
+    } else {
+        fiber = createFiberFromElement(element);
+    }
+    fiber.return = returnFiber;
+    return fiber;
+}
+```
+
+
+
+#### 同级只有一个文本节点
+
+```js
+function reconcileSingleTextNode(
+    returnFiber: FiberNode,
+    currentFiber: FiberNode | null,
+    content: string | number
+) {
+    while (currentFiber !== null) {
+        // update
+        if (currentFiber.tag === HostText) {
+            // 类型没变，可以复用
+            const existing = useFiber(currentFiber, { content });
+            existing.return = returnFiber;
+            deleteRemainingChildren(returnFiber, currentFiber.sibling);
+            return existing;
+        }
+        deleteChild(returnFiber, currentFiber);
+        currentFiber = currentFiber.sibling;
+    }
+    const fiber = new FiberNode(HostText, { content }, null);
+    fiber.return = returnFiber;
+    return fiber;
 }
 ```
 
@@ -314,8 +540,23 @@ function reconcileSingleElement(
 为啥没有双指针？
 newChildren是数组，但是比较的是上次Fiber节点，Fiber的同级节点是由sibling指针链行程的链表。单链表无法使用双指针。
 
+
+
+![react-diff](../../public/react_diff.webp)
+
+
+```mermaid
+---
+title: 新的
+---
+flowchart TB
+    父节点 --> a & c & d & b
+
+```
+
+
 两轮遍历：
-第一轮遍历：
+**第一轮遍历**：
 1. 遍历newChildren，i = 0，将newChildren[i]与oldFiber比较，判断DOM节点是否可复用。
 2. 如果可复用，i++，比较newChildren[i]与oldFiber.sibling是否可复用。可以复用则重复步骤2。
 3. 如果不可复用，立即跳出整个遍历。
@@ -362,10 +603,11 @@ oldIndex=2;
 // 之前节点为 abcd，所以c.index === 2
 //比较 oldIndex 与 lastPlacedIndex;
 
-//如果 oldIndex <= lastPlacedIndex 代表该可复用节点不需要移动, 并将
+//如果 oldIndex > lastPlacedIndex 代表该可复用节点不需要移动, 并将
 lastPlacedIndex = oldIndex;
 
-// 如果 oldIndex < lastplacedIndex 该可复用节点之前插入的位置索引小于这次更新需要插入的位置索引，代表该节点需要向右移动
+// 如果 oldIndex < lastplacedIndex 该可复用节点之前插入的位置索引小于这次更新需要插入的位置索引
+// 代表该节点需要向右移动
 
 // 在例子中，oldIndex 2 > lastPlacedIndex =0,
 则 lastPlacedIndex=2;
@@ -398,11 +640,81 @@ oldIndex 1 < lastPlacedIndex 3 // 之前节点为 abcd，所以b.index === 1
 
 ```
 
+简单伪代码：
+
+```js
+function reconcileChildrenArray(
+    returnFiber: FiberNode,
+    currentFirstChild: FiberNode | null,
+    newChild: any[]
+) {
+    
+    // 最后一个可复用fiber在current中的index
+    let lastPlacedIndex = 0;
+    // 创建的最后一个fiber
+    let lastNewFiber: FiberNode | null = null;
+    // 创建的第一个fiber
+    let firstNewFiber: FiberNode | null = null;
+
+    // 1.将current保存在map中
+    const existingChildren: ExistingChildren = new Map();
+    let current = currentFirstChild;
+    while (current !== null) {
+        const keyToUse = current.key !== null ? current.key : current.index;
+        existingChildren.set(keyToUse, current);
+        current = current.sibling;
+    }
+    // 2.遍历newChild，寻找是否可复用
+    for (let i = 0; i < newChild.length; i++) {      
+        const after = newChild[i];
+        const newFiber = updateFromMap(returnFiber, existingChildren, i, after);
+
+        if (newFiber === null) {
+            continue;
+        }
+        // 3. 标记移动还是插入
+        newFiber.index = i;
+        newFiber.return = returnFiber;
+
+        if (lastNewFiber === null) {
+            lastNewFiber = newFiber;
+            firstNewFiber = newFiber;
+        } else {
+            lastNewFiber.sibling = newFiber;
+            lastNewFiber = lastNewFiber.sibling;
+        }
+
+        if (!shouldTrackEffects) {
+            continue;
+        }
+        const current = newFiber.alternate;
+        if (current !== null) {
+            const oldIndex = current.index;
+            if (oldIndex < lastPlacedIndex) {
+                // 移动，打标识
+                newFiber.flags |= Placement;
+                continue;
+            } else {
+                // 不移动
+                lastPlacedIndex = oldIndex;
+            }
+        } else {
+            // 找不到老的，说明是新的，mount
+            newFiber.flags |= Placement;
+        }
+    }
+    // 4. 将Map中剩下的标记为删除
+    existingChildren.forEach((fiber) => {
+        deleteChild(returnFiber, fiber);
+    });
+    return firstNewFiber;
+}
+```
 
 
 
 
-## 6. 任务调度
+## 7. 任务调度
 利用requestIdleCallback实现task scheduling
 ```js
                                                       |
@@ -509,137 +821,4 @@ function updateComponentOrElement(fiber) {
 
 
 
-
-
-## 7. 组件的实现与挂载
-```js
-<A />
-```
-属性：
-* $$typeof: Symbol(react.element)
-* key: null
-* props: {}
-* ref: null
-* type: f A(props)
-* _owner: null(创建当前组件的对象，默认是null)
-* _store: {validated: false}
-
-```js
-function ReactComponent(props, context, updater) {
-    this.props = props;
-    this.context = context;
-    this.refs = emptyObject;
-    this.updater = updater || ReactNoopUpdateQueue;
-}
-ReactComponent.prototype.setState = function() {
-    ...
-}
-```
-### 组件的挂载
-| Node     | 实际参数    |    结果        |
-| ---------|------------|---------------|
-|null or false |空|ReactEmptyComponent|
-|object && type === string| 虚拟DOM|ReactDomComponent|
-|object && type !== string|React组件|ReactCompositeComponent|
-|string|字符串|ReactTextComponent|
-|number|数字|ReactTextComponent|
-
-```js
- ________
-|_context|\
-|_props__|\\
-|_refs___|\\\
-           \\\
-            \\\______________      __________      __setState
-            |_ReactComponent_|————|prototype_|————|
- __________/______________  |      ——————————      ——forceUpdate
-|updator(ReactUpdateQueue)| |
- —————————————————————————  |
-                            ↓
-                    ———————————————————
-                   |执行ReactElement方法|
-                    ———————————————————
-                            ↓
-            ——————————————————————————————————————
-           | 创建ReactElement类型的js对象 === <A /> |
-            ——————————————————————————————————————
-               ______________↓__________________
-              |ReactDom.render(<A />, container)|
-               —————————————————————————————————
-                            ↓                     |————ReactDomEmptyComponent
-             ________________________________     |————ReactDomComponent           ______________________________
-            |根据<A />类型，内部封装为四大类型组件|————|————ReactCompositeComponent  -->| 解析ReactElement对对象获得HTML |
-             ————————————————————————————————     |___ReactTextComponent            ——————————————————————————————
-                                                                                                ↓
-                                                                                        ___________________
-                                                                                       | 将HTML插入真实DOM中 |
-                                                                                        ———————————————————
-```
-
-
-ReactDom.render -> ReactMount.render -> ReactMount._renderSubtreeIntoContainer
-
-伪代码:
-```js
-/**
- * @param parentComponent 当前组件父组件，第一次null
- * @param nextElement 要插入DOM的组件
- * @param callback 完成后回调
- * @param container 要插入的容器
-*/
-_renderSubtreeIntoContainer: function(parentComponent, nextElement, container, callback) {
-    // 当前组件添加到前一级的props
-    var nextWrapperdElement = ReactElement(TopLevelWrapper, null, null, null ,null, null, nextElement);
-    var prevComponent = getTopLevelWrapperIntoContainer(container);
-    // 判断当前容器下是否存在组件, 即preComponent
-    // 如果true，执行更新流程，若不存在，则卸载
-    if (preComponent) {
-        var preWrappedElement = preComponnet._currentElement;
-        var preElement = preWrappedElement.props;
-        // 组件更新机制在生命周期部分进行解析
-        if (shouldUpdateReactComponent(preElement, nextElement)) {
-            var publicInst = prevComponent._renderedComponent.getPublicInstance();
-            var updatedCallback = callback && function () {
-                callback.call(publicInst);
-            }
-        }
-        ReactMount._updateRootComponent(preComponent, nextWrappedElement, nextContext, container, updatedCallback);
-    } else {
-        // 卸载
-        ReactMount.unmountComponentAtNode(container);
-    }
-}
-
-// 不管更新or卸载，均要求挂载到真实dom上
-_renderNewRootComponent: function(nextElement, container, shouldReuseMarkup, context) {
-    var componentInstance = instantiateReactComponent(nextElement, false);
-    ReactUpdates.batchedUpdates(batchedMountComponentIntoNode, componnetInstance, container, shouldReuseMarkup, context);
-    // 方法返回组件对应的html， 记为变量markup
-    var wrapperID = componentInstance._instance.rootID;
-    instanceByReactRootID[wrapperID] = componentInstance;
-    return componentInstance;
-}
-_mountImageIntoNode = function (markup, container, instance, shouldReuseMarkup, transaction) {
-    setInnerHTML(container, markup);
-    ReactDOMComponentTree.precacheNode(instance, container, firstChild);
-}
-function instaniateReactComponent(node, shouldHaveDebugID) {
-    var instance;
-    if (node === null || node === false) {
-        instance = ReactEmptyComponent.create(instaniateReactComponent);
-    } else if (typeof node === "object") {
-        var element = node;
-        if (typeof element.type === 'string') {
-            instance = ReactHostComponet.createInternalComponnet(element);
-        } else if (isInteralComponentType(element.type)) {
-            instance = new Elementtype(element);
-        } else {
-            instance = new ReactCompositeComponentWrapper(element);
-        }
-    } else if (typeof node === 'string' || typeof node === 'number') {
-        instance = ReactHostComponent.createInstanceForText(node);
-    }
-    return instance;
-}
-```
 
