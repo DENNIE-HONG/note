@@ -479,11 +479,10 @@ function reconcileSingleElement(
                     deleteRemainingChildren(returnFiber, child.sibling);
                     return existing;
                 }
-
                 // key相同，type不同 删掉所有旧的
                 deleteRemainingChildren(returnFiber, currentFirstChild);
                 break;
-			} else {
+            } else {
                 //
                 console.warn('还未实现的react类型', element);
                 break;
