@@ -84,6 +84,22 @@ graph TB
 * props改变 -> ComponentWillReceiveProps ——> ComponentShouldUpdate判定是否需要更新(默认true)
 * state改变 -> ComponentShouldUpdate ? true: （组件将更新、渲染、更新完毕）
 
+
+
+### 16.4之后
+
+![react生命](../../public/react_lifecycle.png)
+
+
+废弃了三个（v17中正式删除）：
+* UNSAFE_componentWillMount：
+    经常被用来做ajax请求数据，但是会导致请求多次。 
+* UNSAFE_componentWillReceiveProps: 在更新中可能被调用多次，
+* UNSAFE_componentWillUpdate： 大多数用户是想要配合ComponentDidUpdate，获取视图前后状态。 
+
+16版本之后，render函数之前的生命周期钩子函数可能被执行多次，可能作用并不是用户想要的。 
+
+
 ## 4. setState
 调用this.updater.enqueneSetState  ——> addUpdate(向队列中推入需要更新fiber) ——> scheduleUpdate（触发调度器一次新更新）
 
