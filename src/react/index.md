@@ -19,12 +19,15 @@ return [
 Fiber是新的reconciler
 * reconciliation: effect list
 * commit: 同步
-```js
-     ○               <=>      ○        ->      ○ (fiber)
-一个ReactElement            current          alternate fiber
-更新后： ○ alternate成为新的current fiber
-```
 
+
+```mermaid
+graph LR
+    ReactElement <---> current -->  a["alternate fiber"]
+
+
+```
+更新后： alternate成为新的current fiber
 ```js
 fiber {
   tag: fiber类型,
@@ -56,31 +59,25 @@ commitDeletion会递归地将子节点从fiber树上移除，对于节点上存�
 
 ## 3. 生命周期
 
-```js
+### react 16.4之前
 
-      _____
-     |start|
-      —————            ___________
-        ↓             |           |
- ________________     |   ________|_________
-|getDefaultProps |    |  |ComponentDidUpdate|
- ————————————————     |   ——————————————————
-        ↓             |           ↑
- _______________      |        ______
-|getInitialState|     |       |render|
- ———————————————      |        ——————
-        ↓             |           ↑
- __________________   |   ___________________
-|ComponentWillMount|  |  |ComponentWillUpdate|
- ——————————————————   |   ———————————————————
-        ↓             |           ↑
-     ______           |   _____________________
-    |render|          |  |ComponentShouldUpdate|<-----
-     ——————           |   —————————————————————       |
-        ↓             |           ↑                   |
- _________________    |        _______       _________|_______________
-|ComponentDidMount|——————————>| 运行中 |————>|ComponentWillReceiveProps|
- —————————————————             ———————       —————————————————————————
+
+
+
+```mermaid
+graph TB
+    start --> getDefaultProps --> getInitialState --> ComponentWillMount --> render --> ComponentDidMount --> Run[[运行中]]
+    Run --父组件更新props改变--> ComponentWillReceiveProps --> S{"性能优化 <br> ShouldComponentUpdate"}
+
+    Run --state改变--> S 
+    
+    S--return true--> ComponentWillUpdate --> r[render] --> ComponentDidUpdate ----> Run 
+
+    S --return false----> Run
+
+    Run --组件卸载 -----> ComponentWillUnMount --> 结束
+
+     
 ```
 
 * 获取父传props -> 初始化state -> （将会挂载、组件渲染、挂载）
