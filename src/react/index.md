@@ -396,30 +396,28 @@ function reconcileChildFibers(
     const isObject = typeof newChild === 'object' && newChild !== null;
 
     if (isObject) {
+         if (Array.isArray(newChild)) {
+            // 调用reconcileChildrenArray 处理
+            return reconcileChildrenArray(returnFiber, currentFiber, newChild);
+        }
         // 可能是react_element_type or react_portal_type
         switch(newChild.$typeof) {
             case REACT_ELEMENT_TYPE:
-                return placeSingleChild(
-					reconcileSingleElement(returnFiber, currentFiber, newChild)
+                return placeSingleChild(reconcileSingleElement(returnFiber, currentFiber, newChild)
 				);
             default:
 				break;
         }
+
     }
     if (typeof newChild === 'string' || typeof newChild === 'number') {
         // 调用reconcileSingleTextNode 处理
-        return placeSingleChild(
-			reconcileSingleTextNode(returnFiber, currentFiber, newChild)
+        return placeSingleChild(reconcileSingleTextNode(returnFiber, currentFiber, newChild)
 		);
     }
 
-    if (isArray(newChild)) {
-        // 调用reconcileChildrenArray 处理
-        return reconcileChildrenArray(returnFiber, currentFiber, newChild);
-    }
-    // ...
     // 如果没有命中，删除节点
-    return deleteRemainingChildren(returnFiber, currentFirstFiberChild);
+    return deleteRemainingChildren(returnFiber, currentFirstChild);
 }
 ```
 #### 同级只有一个节点的diff
