@@ -381,7 +381,7 @@ function subscribe(listener) {
 ```
 
 #### 5.3.4 dispatch
-
+在应用中经常直接 (store.dispatch({ type: 'SOME_ACTION' }))
 ```js
 function dispatch(action) {
     if (!isPlainObject(action)) {
