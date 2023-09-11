@@ -91,6 +91,7 @@ export default store;
 
 ```js
 // actions.js
+// 普通的纯函数
 export const loginAction = (payload) => ({
   type: LOGIN_TODO,
   payload
@@ -187,7 +188,7 @@ export default function applyMiddleware(...middlewares) {
 2. 给middleware分发store
 创建普通的store：
     ```js
-    let newStore = applyMiddleware(mid1, mid2, mid3, ...)(createStore)(reducer, null);
+    const store = applyMiddleware(mid1, mid2, mid3, ...)(createStore)(reducer, null);
     ```
     每个匿名函数都可以访问相同的store，即middlewareAPI.
 3. 组合串联middleware
@@ -242,7 +243,8 @@ function createThunkMiddleware(extraArgument) {
 模拟请求一个天气的异步请求。action可以这么写：
 
 ```js
-function getWeather(url, params) {
+// actions.js
+export function getWeather(url, params) {
     return (dispatch, getState) => {
         fetch(url, params)
             .then(result => {
@@ -259,6 +261,12 @@ function getWeather(url, params) {
             });
     };
 }
+```
+
+```js
+import {getWeather} from 'src/redux/actions';
+// 调用
+store.dispatch(getWeather('http://xxx', {data: 133}));
 ```
 
 #### 5.2.2 redux-promise
@@ -295,9 +303,9 @@ export default function promiseMiddleware({dispatch}) {
 模拟请求一个天气的异步请求。action可以简化写：
 
 ```js
+// actions.js
 const fetchData = (url, params) => fetch(url, params);
-
-async function getWeather(url, params) {
+export async function getWeather(url, params) {
     const result = await fetchData(url, params);
     if (result.error) {
         return {
@@ -312,54 +320,8 @@ async function getWeather(url, params) {
 }
 ```
 
-#### 5.2.3 多异步串联
-sequenceMiddleware源码：
 
-```js
-const sequenceMiddleware = ({dispatch, getState}) => next => action => {
-    if (!Array.isArray(action)) {
-        return next(action);
-    }
-    // 每个action都按照顺序执行
-    return action.reduce((result, currAction) => {
-        // 使用Promise.then方法串联数组
-        return result.then(() => {
-            return Array.isArray(currAction) ?
-                Promise.all(currActoin.map(item) => dispatch(action))
-                : dispatch(currAction);
-        });
-    }, Promise.resolve());
-}
-```
 
-![Alt text](../../public/example.gif)
-假设先获取当前城市，再获取当前城市天气：
-```js
-function getCurrCity(ip) {
-    return {
-        url: '/api/getCurrCity.json',
-        params: {ip},
-        types: [null, 'GET_CITY_SUCCESS', null]
-    };
-}
-
-function getWeather(cityId) {
-    return {
-        url: '/api/getWeatherInfo.json',
-        params: {cityId},
-        types: [null, 'GET_WEATHER_SUCCESS', null]
-    };
-}
-
-function loadInitData(ip) {
-    return [
-        getCurrCity(ip),
-        (dispatch, state) => {
-            dispatch(getWeather(getCityIdWithState(state)));
-        }
-    ];
-}
-```
 
 
 ### 5.3 解读Redux
