@@ -34,7 +34,106 @@ Redux参考了Flux的设计，但是对Flux许多冗余部分（dispatcher）做
 每一个reducer都是纯函数，意味着没有副作用，接收一定的输入，必定会得到一定的输出，使得reducer对状态的修改变得简单、纯粹、可测试。
 
 
-## 4. Redux middleware(重要)
+## 4 使用
+
+### 4.1 将多个reducer组合起来
+举个例子：
+
+```js
+// reducer.js
+/**
+ * @file 应用状态变化响应actions
+ * @author luyanhong 2019-09-25
+ */
+import { combineReducers } from 'redux';
+import playReducer from './playMusic';
+import loginReducer from './user';
+export default combineReducers({
+  playReducer,
+  loginReducer
+});
+```
+```js
+// reducer/user.js
+import defaultAvatar from 'assets/img/user.jpg';
+import { LOGIN_TODO, LOGOUT_TODO } from '../actionTypes';
+const defaultState = {
+  userInfo: {
+    avatarUrl: defaultAvatar,
+    nickname: 'electron宝宝'
+  },
+  isLogin: false
+};
+const loginReducer = (state = defaultState, action) => {
+  if (action.type === LOGIN_TODO) {
+    const { userInfo } = action.payload;
+    return Object.assign({}, state, {
+      userInfo,
+      isLogin: true
+    });
+  }
+  if (action.type === LOGOUT_TODO) {
+    return defaultState;
+  }
+  return state;
+};
+export default loginReducer;
+```
+唯一的store
+```js
+// store.js
+import { createStore } from 'redux';
+import reducer from './reducers';
+const store = createStore(reducer);
+
+export default store;
+```
+
+```js
+// actions.js
+export const loginAction = (payload) => ({
+  type: LOGIN_TODO,
+  payload
+});
+```
+
+使用：
+```js
+function updateUserInfo (profile) {
+    const payload = {
+        userInfo: profile
+    };
+    store.dispatch(loginAction(payload));
+}
+```
+
+
+
+
+### 4.2 action需要支持异步
+reducer之前要请求数据，需要一个中间件来处理这种业务场景。
+举个例子：
+
+```js
+// store.js
+import {createStore, applyMiddleware} from 'redux';
+import thunk from 'redux-thunk';
+import {createLogger} from 'redux-logger';
+import reducer from './reducers';
+ // redux 中间件
+const middleware = [thunk, createLogger];
+const store = applyMiddleware(middlewares)(createStore)(reducer);
+// 这种写法也可以，
+// const store = createStore(reducers, applyMiddleware(middleware));
+```
+
+
+
+
+
+
+
+## 5. Redux middleware(重要)
 由来：希望dispatch或reducer拥有异步请求的功能。需要可以组合的、自由插拔的插件机制，redux借鉴了koa里middleware的思想。通过串联不同的middleware实现变化多样的功能。
 
 应用middleware后Redux处理事件的逻辑：
@@ -50,7 +149,7 @@ flowchart LR
 ```
 
 
-### 4.1 middleware机制
+### 5.1 middleware机制
 
 精炼的源码：
 
@@ -111,14 +210,17 @@ const logger = store => next => action => {
     console.log('finish', action);
 }
 ```
-在middleware中调用next(), 效果是进入下一个middleware，如下图所示。在middleware中调用store.dispatch()和在其他任何地方调用的效果一样。
+
+
+在middleware中调用next(), 效果是进入下一个middleware，如下图所示。在middleware中调用store.dispatch()和在其他任何地方调用的效果一样。  
+
 ![Redux middleware 流程图](../../public/redux-middleware.jpeg)
 
 
-### 4.2 Redux异步流
+### 5.2 Redux异步流
 常用3个middleware来介绍发异步请求。
 
-#### 4.2.1 redux-thunk
+#### 5.2.1 redux-thunk
 理论上发异步请求是在action，可是action都是同步情况，如何支持？
 **Thunk函数**：针对多参数的柯里化，以实现对函数的惰性请求。只要参数有回调函数，都可以写Thunk函数形式。
 
@@ -159,7 +261,7 @@ function getWeather(url, params) {
 }
 ```
 
-#### 4.2.2 redux-promise
+#### 5.2.2 redux-promise
 异步请求都是利用promise，可以抽象promise来解决异步流的问题。
 源码：
 ```js
@@ -210,7 +312,7 @@ async function getWeather(url, params) {
 }
 ```
 
-#### 4.2.3 多异步串联
+#### 5.2.3 多异步串联
 sequenceMiddleware源码：
 
 ```js
@@ -260,9 +362,9 @@ function loadInitData(ip) {
 ```
 
 
-### 4.3 解读Redux
+### 5.3 解读Redux
 
-#### 4.3.1 参数归一化
+#### 5.3.1 参数归一化
 核心功能**createStore**
 v3版本：
 ```js
@@ -282,7 +384,7 @@ export default function createStore(reducer, initialState, enhancer) {
 }
 ```
 
-#### 4.3.2 初始状态以及getState
+#### 5.3.2 初始状态以及getState
 
 ```js
 // 当前reducer，支持store.replaceReducer动态替换reducer
@@ -299,7 +401,7 @@ function getState() {
 
 ```
 
-#### 4.3.3 subscribe
+#### 5.3.3 subscribe
 react-redux中的connect方法隐式完成了这个方法
 ```js
 function subscribe(listener) {
@@ -316,7 +418,7 @@ function subscribe(listener) {
 }
 ```
 
-#### 4.3.4 dispatch
+#### 5.3.4 dispatch
 
 ```js
 function dispatch(action) {
@@ -348,9 +450,9 @@ function dispatch(action) {
 
 
 
-## 4.4 解读react-redux
+## 5.4 解读react-redux
 
-### 4.4.1 Provider
+### 5.4.1 Provider
 
 简单代码：
 ```js
@@ -371,7 +473,7 @@ export default class Provider extends Component {
 }
 ```
 
-### 4.4.2 connect
+### 5.4.2 connect
 可接受4个参数，每个参数有若干可选形式
 
 伪代码：
