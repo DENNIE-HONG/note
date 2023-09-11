@@ -28,23 +28,25 @@ Redux参考了Flux的设计，但是对Flux许多冗余部分（dispatcher）做
 ## 3. Redux 三大原则
 1. **单一数据源**
 一个应用永远只有唯一的数据源。
-2. **状态是只读的**。
+2. **状态是只读的**
 对直接修改store的状态限制的更加彻底，定义一个reducer，根据当前触发的action，对state进行迭代，并没有修改应用状态，而是返回了一份全新的状态。
-3. **状态修改均有纯函数完成。**
-每一个reducer都是纯函数，意味着没有副作用，接收一定的输入，必定会得到一定的输出，，使得reducer对状态的修改变得简单、纯粹、可测试。
+3. **状态修改均有纯函数完成**
+每一个reducer都是纯函数，意味着没有副作用，接收一定的输入，必定会得到一定的输出，使得reducer对状态的修改变得简单、纯粹、可测试。
 
 
 ## 4. Redux middleware(重要)
 由来：希望dispatch或reducer拥有异步请求的功能。需要可以组合的、自由插拔的插件机制，redux借鉴了koa里middleware的思想。通过串联不同的middleware实现变化多样的功能。
 
 应用middleware后Redux处理事件的逻辑：
-```js
-                  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ __ _
-                 |          new dispatch                      |
- ______ callback |   ____     ____ action  ____     ________ action
-|button|—————————|—>|mid1|——>|mid2|——————>|... |——>|dispatch|——————>|reducer|
- ——————          |   ————     ————         ————     ————————  |
-                 |_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ __ _|
+
+
+```mermaid
+flowchart LR
+    button --callback----> mid1
+    subgraph "new dispatch"
+        mid1-->mid2--action--> ... --> dispatch
+    end
+    dispatch--action ---> reducer
 ```
 
 
