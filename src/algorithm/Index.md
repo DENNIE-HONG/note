@@ -9,7 +9,6 @@
 ```js
 function selectSort(arr) {
   const len = arr.length;
-  let temp = null;
   let minIndex = null;
   for (let i = 0; i < len - 1; i++) {
     // 假设当前索引为最小索引
@@ -23,9 +22,7 @@ function selectSort(arr) {
     }
     // 当前项值和最小值交换位置
     if (i !== minIndex) {
-      temp = arr[i];
-      arr[i] = arr[minIndex];
-      arr[minIndex] = temp;
+      [arr[i], arr[minIndex]] = [arr[minIndex], arr[i]];
     }
   }
   return arr;
