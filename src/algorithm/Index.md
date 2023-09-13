@@ -100,15 +100,16 @@ function mergeSort(arr) {
 3. 对于2个新数组不断重复1.2步，直到数组只剩下一个元素，这时step2的数组已经有序（leftArray + 基准元素 + rightArray）
 
 ```js
-function quickSort(a) {
-  if (a.length <= 1) {
-    return a;
+function quickSort(arr) {
+  if (arr.length <= 1) {
+    return arr;
   }
-  const mid = Math.floor(a.length / 2);
-  const midItem = a.splice(mid, 1)[0];
+  const mid = Math.floor(arr.length / 2);
+  // 提取出midItem
+  const midItem = arr.splice(mid, 1)[0];
   const left = [];
   const right = [];
-  a.forEach((item) => {
+  arr.forEach((item) => {
     if (item <= midItem) {
       left.push(item);
     } else {
@@ -259,13 +260,14 @@ graph.bob = ["anuj", "peggy"];
 graph.alice = ["peggy"];
 ...
 ```
+
 算法思路：
-1. 创建队列，用于存储要检查的人；
+1. 创建**队列**，用于存储要检查的人；
 2. 队列中弹出一人；
 3. 检查这个人是否是芒果经销商；
 4. 是：成功；否：将这个人的所有邻居加入队列；
 5. 回到第二步；
-6. 队列Wie空，你的人际关系中无经销商；
+6. 队列为空，你的人际关系中无经销商；
 
 ```js
 function search(name) {
@@ -307,41 +309,9 @@ function Node(data, left, right) {
 
 ```
 
-### 4.1 二叉树的插入
-```js
-function insert(data) {
-  let node = new Node(data, null, null);
-  if (this.root === null) {
-    this.root = node;
-  } else {
-    let current = this.root;
-    let parent;
-    while(true) {
-      parent = current;
-      if (data < current.data) {
-        current = current.left;
-        if (current === null) {
-          parent.left = node;
-          break;
-        }
-      } else {
-        current = current.right;
-        if (current === null) {
-          parent.right = node;
-          break;
-        }
-      }    
-    }
-  }
-}
 
-function BST () {
-  this.root = null;
-  this.insert = insert;
-}
-```
 
-### 4.2 二叉树的遍历
+### 4.1 二叉树的遍历
 * 前序遍历（根左右）：最后一个最大，第一个是root；
 * 中序遍历（左根右）：从小到大；
 * 后序遍历（左右根）：根节点在最后；
@@ -379,7 +349,7 @@ function preOrder(node) {
 }
 ```
 
-### 4.3 二叉树查找
+### 4.2 二叉树查找
 最小值
 ```js
 function getMin(bst) {
@@ -410,10 +380,44 @@ function find(target, bst) {
     } else if (target > current.data) {
       current = current.right;
     } else if (target < current.data) {
-      current = current.data;
+      current = current.left;
     }
   }
-  return -1;
+  return false;
+}
+```
+
+### 4.3 二叉树的插入
+```js
+function insert(data) {
+  let node = new Node(data, null, null);
+  if (this.root === null) {
+    this.root = node;
+  } else {
+    let current = this.root;
+    let parent;
+    while(true) {
+      parent = current;
+      if (data < current.data) {
+        current = current.left;
+        if (current === null) {
+          parent.left = node;
+          break;
+        }
+      } else {
+        current = current.right;
+        if (current === null) {
+          parent.right = node;
+          break;
+        }
+      }    
+    }
+  }
+}
+
+function BST () {
+  this.root = null;
+  this.insert = insert;
 }
 ```
 
