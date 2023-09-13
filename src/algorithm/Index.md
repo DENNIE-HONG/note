@@ -349,7 +349,7 @@ function preOrder(node) {
 }
 ```
 
-### 4.2 二叉树查找
+### 4.2 二叉搜索树查找
 最小值
 ```js
 function getMin(bst) {
@@ -389,29 +389,29 @@ function find(target, bst) {
 
 ### 4.3 二叉树的插入
 ```js
+
+function insertNodeByFather(parent, newNode) {
+    // 新节点小
+    if (newNode.data < parent.data) {
+        // 判断左节点是否为空
+        if (parent.left === null) {
+            parent.left = newNode;
+        } else {
+            insertNodeByFather(parent.left, newNode);
+        }
+    } else {
+        parent.right && insertNodeByFather(parent.right, newNode);
+        !parent.right && (parent.right = newNode);
+    }
+}
+// 默认根节点的值小于左节点的值，大于右节点的值
 function insert(data) {
-  let node = new Node(data, null, null);
+  const node = new Node(data, null, null);
+  // 如果没有根节点，插入就是根节点
   if (this.root === null) {
     this.root = node;
   } else {
-    let current = this.root;
-    let parent;
-    while(true) {
-      parent = current;
-      if (data < current.data) {
-        current = current.left;
-        if (current === null) {
-          parent.left = node;
-          break;
-        }
-      } else {
-        current = current.right;
-        if (current === null) {
-          parent.right = node;
-          break;
-        }
-      }    
-    }
+    insertNodeByFather(this.root, node);
   }
 }
 
@@ -440,17 +440,36 @@ function BST () {
 查找性能大打折扣。
 解决：因为二叉查找树多次插入新节点而导致不平衡，用红黑树。
 
-```js
-                     黑13
-                    /   \
-                  红8    红17
-                /   \    /   \
-               黑1  黑11 黑15 黑25
-             /   \  / \  / \  /  \
-          NIL    6 NIL N N N 红22 红27
-                /  \        / \   / \
-                NIL NIL    NIL N N   N
-```    
+  
+
+```mermaid
+flowchart TB
+    13---8
+    13---17
+    8---1
+    8---11
+    17---15
+    17---25
+    1---.
+    1---6
+    11---N1[.]
+    11---N11[.]
+    15---N2[.]
+    15---N3[.]
+    25---22
+    25---27
+    6---N4[.]
+    6---N5[.]
+    22---N6[.]
+    22---N7[.]
+    27---N8[.]
+    27---N9[.]
+    style 17 fill:red
+    style 8 fill:red
+    style 22 fill:red
+    style 27 fill:red
+    style 6 fill:red
+```
 
 红黑树特性：
 1. 节点红or黑；
