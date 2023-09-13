@@ -63,7 +63,7 @@ function insertionSort(arr) {
 
 function merge(left, right) {
   const result = [];
-  whilre(left.length && right.length) {
+  while(left.length && right.length) {
     if (left[0] <= right[0]) {
       result.push(left.shift());
     } else {
