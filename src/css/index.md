@@ -132,7 +132,7 @@ A: 当最小内容宽度较大时，例如连续英文单词，content内容最�
 
 
 ### BFC是什么？
-Block Formatting Context(块级格式化上下文)
+Block Formatting Context(块级格式化上下文)，是页面上独立的一块渲染区域。
 ### BFC特性？
 1. 内部box会在垂直方向，一个接一个的放置；
 2. 每个元素的margin box的左边，与包含块border box的左边相接触；
