@@ -97,7 +97,29 @@ graph TB
 * UNSAFE_componentWillReceiveProps: 在更新中可能被调用多次，
 * UNSAFE_componentWillUpdate： 大多数用户是想要配合ComponentDidUpdate，获取视图前后状态。 
 
-16版本之后，render函数之前的生命周期钩子函数可能被执行多次，可能作用并不是用户想要的。 
+16版本之后，**react异步渲染**等机制，渲染过程被分割多次，还可能暂停，这导致 componentWillUpdate 和 componentDidUpdate 执行前后可能会间隔很长时间。 render函数之前的生命周期钩子函数可能被执行多次，如果开发者把异步请求写在这里，导致执行多次，可能作用并不是用户想要的。 
+* 进行重复的事件监听, 无法正常取消重复的事件, 严重点可能会导致内存泄漏
+* 发出重复的异步网络请求, 导致 IO 资源被浪费
+
+#### getDerivedStateFromProps
+getDerivedStateFromProps 首先它是 静态 方法, 方法参数分别下一个 props、上一个 state, 这个生命周期函数是为了替代 componentWillReceiveProps 而存在的, 主要作用就是监听 props 然后修改当前组件的 state
+
+#### getSnapshotBeforeUpdate
+getSnapshotBeforeUpdate 生命周期将在 render 之后 DOM 变更之前被调用, 此生命周期的返回值将作为 componentDidUpdate 的第三个参数进行传递, 当然通常不需要此生命周期, 但在重新渲染期间需要手动保留 DOM 信息时就特别有用
+
+```js
+
+getSnapshotBeforeUpdate(prevProps, prevState){
+  console.log(5);
+  return 999;
+}
+
+componentDidUpdate(prevProps, prevState, snapshot) {
+  console.log(6, snapshot);
+}
+
+```
+
 
 
 ## 4. setState
@@ -785,7 +807,7 @@ function updateFromMap(
 
 
 ## 7. 任务调度
-利用requestIdleCallback实现task scheduling
+利用window.requestIdleCallback实现task scheduling
 ```js
                                                       |
                       Frame#1                         |        Frame#2
@@ -889,6 +911,412 @@ function updateComponentOrElement(fiber) {
 
 
 
+## 8.事件
+
+v17版本之前：
+在react中，我们绑定的事件onClick等，并不是原生事件，而是由原生事件合成的React事件，比如 click事件合成为onClick事件。比如blur , change , input , keydown , keyup等 , 合成为onChange。
+
+优点：
+* 事件绑定在document统一管理
+* 抹平不同浏览器的差异
+
+### 事件合成-事件插件
+
+**namesToPlugins**: 装事件名 -> 事件模块插件的映射
+```js
+
+const namesToPlugins = {
+    SimpleEventPlugin,
+    EnterLeaveEventPlugin,
+    ChangeEventPlugin,
+    SelectEventPlugin,
+    BeforeInputEventPlugin,
+}
+
+```
+
+**plugins**这个对象就是上面注册的所有插件列表,初始化为空。
+
+```js
+const  plugins = [LegacySimpleEventPlugin, LegacyEnterLeaveEventPlugin, ...];
+
+```
+
+**registrationNameModules**: React合成的事件-对应的事件插件的关系
+
+```js
+{
+    onBlur: SimpleEventPlugin,
+    onClick: SimpleEventPlugin,
+    onClickCapture: SimpleEventPlugin,
+    onChange: ChangeEventPlugin,
+    onChangeCapture: ChangeEventPlugin,
+    onMouseEnter: EnterLeaveEventPlugin,
+    onMouseLeave: EnterLeaveEventPlugin,
+    ...
+}
+
+```
+
+**事件插件**：
+举个例子：
+```js
+const SimpleEventPlugin = {
+    eventTypes:{ 
+        'click':{ /* 处理点击事件  */
+            phasedRegistrationNames:{
+                bubbled: 'onClick',       // 对应的事件冒泡 - onClick 
+                captured:'onClickCapture' //对应事件捕获阶段 - onClickCapture
+            },
+            dependencies: ['click'], //事件依赖
+            ...
+        },
+        'blur':{ /* 处理失去焦点事件 */ },
+        ...
+    }
+    extractEvents:function(topLevelType,targetInst,){ /* eventTypes 里面的事件对应的统一事件处理函数，接下来会重点讲到 */ }
+}
+
+```
+
+**registrationNameDependencies**
+gistrationNameDependencies用来记录，合成事件比如 onClick 和原生事件 click对应关系。比如 onChange 对应 change , input , keydown , keyup事件。
+
+```js
+{
+    onBlur: ['blur'],
+    onClick: ['click'],
+    onClickCapture: ['click'],
+    onChange: ['blur', 'change', 'click', 'focus', 'input', 'keydown', 'keyup', 'selectionchange'],
+    onMouseEnter: ['mouseout', 'mouseover'],
+    onMouseLeave: ['mouseout', 'mouseover'],
+    ...
+}
+
+```
+
+#### 事件初始化
+
+```js
+/* 注册事件插件 */
+export function injectEventPluginsByName(injectedNamesToPlugins){
+     for (const pluginName in injectedNamesToPlugins) {
+         namesToPlugins[pluginName] = injectedNamesToPlugins[pluginName]
+     }
+     recomputePluginOrdering()
+}
+
+```
+
+```js
+const eventPluginOrder = [ 'SimpleEventPlugin' , 'EnterLeaveEventPlugin','ChangeEventPlugin','SelectEventPlugin' , 'BeforeInputEventPlugin' ]
+
+// 形成上面说的那个plugins,数组
+function recomputePluginOrdering(){
+    for (const pluginName in namesToPlugins) {
+        /* 找到对应的事件处理插件，比如 SimpleEventPlugin  */
+        const pluginModule = namesToPlugins[pluginName];
+        const pluginIndex = eventPluginOrder.indexOf(pluginName);
+        /* 填充 plugins 数组  */
+        plugins[pluginIndex] = pluginModule;
+        const publishedEvents = pluginModule.eventTypes;
+        for (const eventName in publishedEvents) {
+        // publishedEvents[eventName] -> eventConfig , pluginModule -> 事件插件 ， eventName -> 事件名称
+            publishEventForPlugin(publishedEvents[eventName],pluginModule,eventName,)
+        }
+    }
 
 
+}
 
+
+```
+
+```js
+
+/*
+  dispatchConfig -> 原生事件对应配置项 { phasedRegistrationNames :{  冒泡 捕获  } ，   }
+  pluginModule -> 事件插件 比如SimpleEventPlugin  
+  eventName -> 原生事件名称, 比如click。
+*/
+function publishEventForPlugin (dispatchConfig,pluginModule,eventName){
+    eventNameDispatchConfigs[eventName] = dispatchConfig;
+    /* 事件 */
+    const phasedRegistrationNames = dispatchConfig.phasedRegistrationNames;
+    // {bubbled: onClick}
+    if (phasedRegistrationNames) {
+        for (const phaseName in phasedRegistrationNames) {
+            if (phasedRegistrationNames.hasOwnProperty(phaseName)) {
+                // phasedRegistrationName React事件名 比如 onClick / onClickCapture
+                const phasedRegistrationName = phasedRegistrationNames[phaseName];
+                // 填充形成 registrationNameModules React 合成事件 -> React 处理事件插件映射关系
+                registrationNameModules[phasedRegistrationName] = pluginModule;
+                // 填充形成 registrationNameDependencies React 合成事件 -> 原生事件 映射关系
+                registrationNameDependencies[phasedRegistrationName] = pluginModule.eventTypes[eventName].dependencies;
+            }
+        }
+        return true;
+    }
+}
+
+```
+这个阶段主要形成了上述的几个重要对象，构建初始化React合成事件和原生事件的对应关系，合成事件和对应的事件处理插件关系.
+
+
+### 事件绑定
+
+#### 1 diffProperties 处理React合成事件
+绑在fiber的属性上：
+
+```js
+fiber = {
+    ...
+    memoizedProps:{
+        onClick:function handerClick(){},
+        className:'button'
+    }
+    
+}
+
+```
+
+进入diff阶段，如果判断是HostComponent(dom元素)类型的fiber，会用diff props函数diffProperties单独处理。
+
+```js
+function diffProperties(){
+    /* 判断当前的 propKey 是不是 React合成事件 */
+    if(registrationNameModules.hasOwnProperty(propKey)){
+         /* 这里多个函数简化了，如果是合成事件， 传入成事件名称 onClick ，向document注册事件  */
+         legacyListenToEvent(registrationName, document）;
+    }
+}
+
+```
+diffProperties函数在 diff props 如果发现是合成事件(onClick) 就会调用legacyListenToEvent函数。注册事件监听器。
+
+#### 2 legacyListenToEvent 注册事件监听器
+```js
+//  registrationName -> onClick 事件
+//  mountAt -> document or container
+function legacyListenToEvent(registrationName，mountAt){
+   const dependencies = registrationNameDependencies[registrationName]; // 根据 onClick 获取  onClick 依赖的事件数组 [ 'click' ]。
+    for (let i = 0; i < dependencies.length; i++) {
+    const dependency = dependencies[i];
+    //这个经过多个函数简化，如果是 click 基础事件，会走 legacyTrapBubbledEvent ,而且都是按照冒泡处理
+     legacyTrapBubbledEvent(dependency, mountAt);
+  }
+}
+
+```
+legacyTrapBubbledEvent 就是执行将绑定真正的dom事件的函数 legacyTrapBubbledEvent(冒泡处理)。
+
+```js
+function legacyTrapBubbledEvent(topLevelType,element){
+   addTrappedEventListener(element,topLevelType,PLUGIN_EVENT_SYSTEM,false)
+}
+
+
+```
+在legacyListenToEvent函数中，先找到 React 合成事件对应的原生事件集合，比如 onClick -> ['click'] , onChange -> [blur , change , input , keydown , keyup]，然后遍历依赖项的数组，绑定事件，这就解释了，为什么我们在刚开始的demo中，只给元素绑定了一个onChange事件，结果在document上出现很多事件监听器的原因，就是在这个函数上处理的。
+
+
+#### 3 绑定 dispatchEvent，进行事件监听
+React是如何绑定事件到document？ 事件处理函数函数又是什么？
+
+```js
+/*
+  targetContainer -> document
+  topLevelType ->  click
+  capture = false
+*/
+function addTrappedEventListener(targetContainer,topLevelType,eventSystemFlags,capture){
+   const listener = dispatchEvent.bind(null,topLevelType,eventSystemFlags,targetContainer) 
+   if(capture){
+       // 事件捕获阶段处理函数。
+   }else{
+       /* TODO: 重要, 这里进行真正的事件绑定。*/
+      targetContainer.addEventListener(topLevelType,listener,false) // document.addEventListener('click',listener,false)
+   }
+}
+
+```
+① 在React，diff DOM元素类型的fiber的props的时候， 如果发现是React合成事件，比如onClick，会按照事件系统逻辑单独处理。
+② 根据React合成事件类型，找到对应的原生事件的类型，然后调用判断原生事件类型，大部分事件都按照冒泡逻辑处理，少数事件会按照捕获逻辑处理（比如scroll事件）。
+③ 调用 addTrappedEventListener 进行真正的事件绑定，绑定在document上，dispatchEvent 为统一的事件处理函数。
+④ 有一点值得注意: 只有上述那几个特殊事件比如 scorll,focus,blur等是在事件捕获阶段发生的，其他的都是在事件冒泡阶段发生的，无论是onClick还是onClickCapture都是发生在冒泡阶段，至于 React 本身怎么处理捕获逻辑的。我们接下来会讲到。
+
+### 事件触发
+
+
+#### 事件触发处理函数 dispatchEvent
+React事件注册时候，统一的监听器dispatchEvent，也就是当我们点击按钮之后，首先执行的是dispatchEvent函数，
+
+```js
+function dispatchEvent(topLevelType,eventSystemFlags,targetContainer,nativeEvent){
+    /* 尝试调度事件 */
+    const blockedOn = attemptToDispatchEvent( topLevelType,eventSystemFlags, targetContainer, nativeEvent);
+}
+
+```
+```js
+/*
+topLevelType -> click
+eventSystemFlags -> 1
+targetContainer -> document
+nativeEvent -> 原生事件的 event 对象
+*/
+function attemptToDispatchEvent(topLevelType,eventSystemFlags,targetContainer,nativeEvent){
+    /* 获取原生事件 e.target */
+    const nativeEventTarget = getEventTarget(nativeEvent)
+    /* 获取当前事件，最近的dom类型fiber ，我们 demo中 button 按钮对应的 fiber */
+    let targetInst = getClosestInstanceFromNode(nativeEventTarget); 
+    /* 重要：进入legacy模式的事件处理系统 */
+    dispatchEventForLegacyPluginEventSystem(topLevelType,eventSystemFlags,nativeEvent,targetInst,);
+    return null;
+}
+
+
+```
+首先根据真实的事件源对象，找到 e.target 真实的 dom 元素。
+② 然后根据dom元素，找到与它对应的 fiber 对象targetInst，在我们 demo 中，找到 button 按钮对应的 fiber。
+③ 然后正式进去legacy模式的事件处理系统，
+
+
+#### legacy 事件处理系统与批量更新
+
+```js
+/* topLevelType - click事件 ｜ eventSystemFlags = 1 ｜ nativeEvent = 事件源对象  ｜ targetInst = 元素对应的fiber对象  */
+function dispatchEventForLegacyPluginEventSystem(topLevelType,eventSystemFlags,nativeEvent,targetInst){
+    /* 从React 事件池中取出一个，将 topLevelType ，targetInst 等属性赋予给事件  */
+    const bookKeeping = getTopLevelCallbackBookKeeping(topLevelType,nativeEvent,targetInst,eventSystemFlags);
+    try { /* 执行批量更新 handleTopLevel 为事件处理的主要函数 */
+    batchedEventUpdates(handleTopLevel, bookKeeping);
+  } finally {
+    /* 释放事件池 */  
+    releaseTopLevelCallbackBookKeeping(bookKeeping);
+  }
+}
+
+
+```
+**batchedEventUpdates**
+```js
+export function batchedEventUpdates(fn,a){
+    isBatchingEventUpdates = true;
+    try{
+       fn(a) // handleTopLevel(bookKeeping)
+    }finally{
+        isBatchingEventUpdates = false
+    }
+}
+
+```
+#### 执行事件插件函数
+
+```js
+// 流程简化后
+// topLevelType - click  
+// targetInst - button Fiber
+// nativeEvent
+function handleTopLevel(bookKeeping){
+    const { topLevelType,targetInst,nativeEvent,eventTarget, eventSystemFlags} = bookKeeping
+    for(let i=0; i < plugins.length;i++ ){
+        const possiblePlugin = plugins[i];
+        /* 找到对应的事件插件，形成对应的合成event，形成事件执行队列  */
+        const  extractedEvents = possiblePlugin.extractEvents(topLevelType,targetInst,nativeEvent,eventTarget,eventSystemFlags)  
+    }
+    if (extractedEvents) {
+        events = accumulateInto(events, extractedEvents);
+    }
+    /* 执行事件处理函数 */
+    runEventsInBatch(events);
+}
+
+```
+
+#### extractEvents 形成事件对象event 和 事件处理函数队列
+
+```js
+const  SimpleEventPlugin = {
+    extractEvents:function(topLevelType,targetInst,nativeEvent,nativeEventTarget){
+        const dispatchConfig = topLevelEventsToDispatchConfig.get(topLevelType);
+        if (!dispatchConfig) {
+            return null;
+        }
+        switch(topLevelType){
+            default:
+            EventConstructor = SyntheticEvent;
+            break;
+        }
+        /* 产生事件源对象 */
+        const event = EventConstructor.getPooled(dispatchConfig,targetInst,nativeEvent,nativeEventTarget)
+        const phasedRegistrationNames = event.dispatchConfig.phasedRegistrationNames;
+        const dispatchListeners = [];
+        const {bubbled, captured} = phasedRegistrationNames; /* onClick / onClickCapture */
+        const dispatchInstances = [];
+        /* 从事件源开始逐渐向上，查找dom元素类型HostComponent对应的fiber ，收集上面的React合成事件，onClick / onClickCapture  */
+         while (instance !== null) {
+              const {stateNode, tag} = instance;
+              if (tag === HostComponent && stateNode !== null) { /* DOM 元素 */
+                   const currentTarget = stateNode;
+                   if (captured !== null) { /* 事件捕获 */
+                        /* 在事件捕获阶段,真正的事件处理函数 */
+                        const captureListener = getListener(instance, captured);
+                        if (captureListener != null) {
+                        /* 对应发生在事件捕获阶段的处理函数，逻辑是将执行函数unshift添加到队列的最前面 */
+                            dispatchListeners.unshift(captureListener);
+                            dispatchInstances.unshift(instance);
+                            dispatchCurrentTargets.unshift(currentTarget);
+                        }
+                    }
+                    if (bubbled !== null) { /* 事件冒泡 */
+                        /* 事件冒泡阶段，真正的事件处理函数，逻辑是将执行函数push到执行队列的最后面 */
+                        const bubbleListener = getListener(instance, bubbled);
+                        if (bubbleListener != null) {
+                            dispatchListeners.push(bubbleListener);
+                            dispatchInstances.push(instance);
+                            dispatchCurrentTargets.push(currentTarget);
+                        }
+                    }
+              }
+              instance = instance.return;
+         }
+          if (dispatchListeners.length > 0) {
+              /* 将函数执行队列，挂到事件对象event上 */
+            event._dispatchListeners = dispatchListeners;
+            event._dispatchInstances = dispatchInstances;
+            event._dispatchCurrentTargets = dispatchCurrentTargets;
+         }
+        return event
+    }
+}
+
+
+```
+
+① 首先形成React事件独有的合成事件源对象，这个对象，保存了整个事件的信息。将作为参数传递给真正的事件处理函数(handerClick)。
+② 然后声明事件执行队列 ，按照冒泡和捕获逻辑，从事件源开始逐渐向上，查找dom元素类型HostComponent对应的fiber ，收集上面的 React 合成事件，例如 onClick / onClickCapture ，对于冒泡阶段的事件(onClick)，将 push 到执行队列后面 ， 对于捕获阶段的事件(onClickCapture)，将 unShift到执行队列的前面。
+③ 最后将事件执行队列，保存到React事件源对象上。等待执行。
+
+
+**事件触发runEventsInBatch**
+```js
+
+function runEventsInBatch(){
+    const dispatchListeners = event._dispatchListeners;
+    const dispatchInstances = event._dispatchInstances;
+    if (Array.isArray(dispatchListeners)) {
+    for (let i = 0; i < dispatchListeners.length; i++) {
+      if (event.isPropagationStopped()) { /* 判断是否已经阻止事件冒泡 */
+        break;
+      }
+      
+      dispatchListeners[i](event)
+    }
+  }
+  /* 执行完函数，置空两字段 */
+  event._dispatchListeners = null;
+  event._dispatchInstances = null;
+}
+
+```
