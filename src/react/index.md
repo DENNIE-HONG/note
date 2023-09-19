@@ -920,6 +920,7 @@ v17版本之前：
 * 事件绑定在document统一管理
 * 抹平不同浏览器的差异
 
+> https://juejin.cn/post/6955636911214067720?searchId=202309141949372D101D9C8E1D2E4610C9#heading-17
 ### 事件合成-事件插件
 
 **namesToPlugins**: 装事件名 -> 事件模块插件的映射
@@ -1320,3 +1321,12 @@ function runEventsInBatch(){
 }
 
 ```
+dispatchListeners[i](event)就是执行我们的事件处理函数比如handerClick,从这里我们知道，我们在事件处理函数中，返回 false ，并不会阻止浏览器默认行为。
+
+①首先通过统一的事件处理函数 dispatchEvent,进行批量更新batchUpdate。
+
+
+②然后执行事件对应的处理插件中的extractEvents，合成事件源对象,每次React会从事件源开始，从上遍历类型为 hostComponent即 dom类型的fiber,判断props中是否有当前事件比如onClick,最终形成一个事件执行队列，React就是用这个队列，来模拟事件捕获->事件源->事件冒泡这一过程。
+
+
+③最后通过runEventsInBatch执行事件队列，如果发现阻止冒泡，那么break跳出循环，最后重置事件源，放回到事件池中，完成整个流程。
