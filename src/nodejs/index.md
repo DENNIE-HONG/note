@@ -1,4 +1,15 @@
 # NodeJs
+Node.js是一个开源且跨平台的JavaScript运行时环境，它在浏览器外运行V8 JavaScript引擎（Google Chrome的内核），利用事件驱动、非阻塞和异步输入输出模型等技术来提高性能，使得JavaScript可以用于服务器端开发。Node.js采用非阻塞型I/O机制，在处理I/O操作时不会阻塞进程，而是通过事件通知的方式处理操作结果。这种机制使得Node.js在处理高并发场景时表现优秀。
+
+**优点**
+* 处理高并发场景性能更佳：Node.js适用于处理大量并发请求的场景，由于其非阻塞I/O和事件驱动模型，能够高效地处理并发请求。
+* 适合I/O密集型应用：Node.js擅长处理I/O密集型应用，其执行效率仍然较高，即使在运行极限时，CPU占用率仍然较低。
+* 轻量快速：Node.js采用V8引擎作为底层，使得其执行速度快，且具有较小的内存占用。
+
+**缺点**
+* 不适合CPU密集型应用：由于Node.js是单线程的，如果应用程序中有大量计算密集型任务，会导致阻塞，影响整个应用的性能。
+* 单线程：Node.js采用单线程事件循环，虽然能够高效处理I/O密集型应用，但是无法充分利用多核CPU，不能充分发挥多核处理器的优势。
+* 可靠性低：由于Node.js是单线程的，一旦某个环节崩溃，整个系统都会崩溃，可靠性较低。
 ## 1. 工作模式
 单线程的问题：
 1. cpu的利用率
@@ -131,6 +142,16 @@ function Module(id, parent) {
 编译成功的模块：文件路径缓存在Module._cache
 
 ### require？
+
+#### 查找规则
+1. 核心模块： 首先，Node.js会尝试查找是否为内置模块;
+2. 文件模块：Node.js将尝试查找文件模块;
+3. 目录作为模块: 
+如果使用了目录作为模块名，并且目录中包含一个package.json文件，则Node.js会查找该文件中指定的main入口文件。如果package.json不存在或者未指定main，则Node.js会尝试加载目录下的index.js或index.node文件作为入口；
+4. 非原生模块： 
+如果以上查找都没有找到模块，Node.js会将模块名解析为绝对路径，并按照一定的路径顺序在文件系统中查找node_modules目录。Node.js会从当前模块的目录开始查找，然后逐级向上查找父目录的node_modules，直到根目录。如果找到了node_modules目录，则进入其中查找对应模块。
+
+
 require定义在Module的原型链上。
 ```js
 Module.prototype.require = function(path) {
@@ -141,7 +162,7 @@ Module.prototype.require = function(path) {
 Module._load(request, parent, isMain):
 1. 根据文件名，调用Module._resolveFilename解析文件路径；
 2. 查看缓存Module._cache中是否有该模块，如果有，直接返回；
-3. 通过NativeModule.noInternalExists判断是否为核心模块，是 ->NativeModule.require;
+3. 通过NativeModule.noInternalExists判断是否为**核心模块**，是 ->NativeModule.require;
 4. 不是核心，新对象Module -> tryModuleLoad()
 
 #### 核心模块加载原理
@@ -186,6 +207,21 @@ Module._extensions:
 * node: process.dlopen
 
 
+```mermaid
+---
+title: require查抄策略
+---
+flowchart TB
+    isCache{moduele._cache缓存有吗} --有--> 返回
+    isCache--没有--> built{核心模块吗}
+    built--是--> NativeModule.require --> isBC{有缓存吗} --有--> A[返回]
+    built--不是--> tryModule--> 检测扩展名 --> 不同扩展名调用不同moudle --> 加载,编译模块Module._extensions
+    
+    isBC --没有--> 缓存加载编译
+    
+```
+
+
 
 
 ## 6. 异步I/O
@@ -196,3 +232,90 @@ Module._extensions:
 3. 重复调用I/O确认是否完成（轮询）即判断状态
 
 内部完成I/O任务的另有线程池。
+
+
+
+
+
+
+
+
+## 7. EventEmitter
+在Node.js中，EventEmitter是事件驱动的基础，几乎所有模块都继承自它。它实现了观察者模式，其中被观察者维护一组观察者，并在更新时通知观察者。
+
+
+### 基本用法
+
+```js
+const EventEmitter = require('events');
+
+class MyEmitter extends EventEmitter {}
+
+const myEmitter = new MyEmitter();
+
+function callback() {
+    console.log('触发了event事件！');
+}
+
+myEmitter.on('event', callback);
+myEmitter.emit('event');
+myEmitter.removeListener('event', callback);
+
+```
+
+
+
+
+
+
+### 如何实现Event库(发布订阅模式)
+```js
+class EventEmeitter {
+    constructor() {
+        this._events = this._events || new Map();
+        this._maxListeners = this._maxListeners || 10;
+    }
+
+    emit (type, ...args) {
+        let handlers = this._events.get(type);
+        if (!handers) {
+            return false;
+        }
+        for (let i = 0; i < handlers.length; i++) {
+            if (args.length > 0) {
+                handlers[i].apply(this, args);
+            } else {
+                handlers[i].call(this);
+            }
+        }
+        return true;
+  }
+
+    addListener (type, fn) {
+        const handlers = this._events.get(type);
+        if (!handllers) {
+            this._events.set(type, [fn]);
+        } else {
+            handlers.push(fn);
+            this._events.set(type, handlers);
+        }
+    }
+
+    removeListener(type, fn) {
+        const handlers = this._events.get(type);
+        if (!handlers) {
+            return;
+        }
+        let position = -1;
+        for (let i = 0; i < handler.length; i++) {
+            if (handers[i] === fn) {
+                position = i;
+                break;
+            }
+        }
+        if (position !== -1) {
+            handlers.splice(position, 1);
+        }
+    }
+}
+```

@@ -304,57 +304,6 @@ cloneForce(a); // 没报错，破解循环引用
 
 
 
-## 如何实现Event库(发布订阅模式)
-```js
-class EventEmeitter {
-    constructor() {
-        this._events = this._events || new Map();
-        this._maxListeners = this._maxListeners || 10;
-    }
-
-    emit (type, ...args) {
-        let handlers = this._events.get(type);
-        if (!handers) {
-            return false;
-        }
-        for (let i = 0; i < handlers.length; i++) {
-            if (args.length > 0) {
-                handlers[i].apply(this, args);
-            } else {
-                handlers[i].call(this);
-            }
-        }
-        return true;
-  }
-
-    addListener (type, fn) {
-        const handlers = this._events.get(type);
-        if (!handllers) {
-            this._events.set(type, [fn]);
-        } else {
-            handlers.push(fn);
-            this._events.set(type, handlers);
-        }
-    }
-
-    removeListener(type, fn) {
-        const handlers = this._events.get(type);
-        if (!handlers) {
-            return;
-        }
-        let position = -1;
-        for (let i = 0; i < handler.length; i++) {
-            if (handers[i] === fn) {
-                position = i;
-                break;
-            }
-        }
-        if (position !== -1) {
-            handlers.splice(position, 1);
-        }
-    }
-}
-```
 
 ## 前端注意哪些SEO?
 1. 合理的title、description、keywords：搜索对这三项权重逐个减少
