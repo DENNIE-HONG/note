@@ -126,6 +126,18 @@ compiler.plugin('watch-run', (watching, callback) => {
 ```
 
 
+### 区别
+1. 从概念上
+loader 是文件加载器，能够加载资源文件，并对这些文件进行一些处理，诸如编译、压缩等，最终一起打包到指定的文件中；
+plugin 赋予了 webpack 各种灵活的功能，例如打包优化、资源管理、环境变量注入等，目的是解决 loader 无法实现的其他事；
+
+2. 运行时机上
+loader 运行在打包文件之前；
+plugins 在整个编译周期都起作用；
+
+
+
+
 ## Tapable机制
 
 webpack本质是一种事件流机制，核心是Tapable。
@@ -579,6 +591,19 @@ class Compliation extends Tapable {
 }
 ```
 
+
+1. 根据配置中的 entry 找出所有的入口文件: 
+就开始从Entry入口文件开始读取，主要执行_addModuleChain()函数;
+2. build module 完成模块编译
+这里主要调用配置的loaders，将我们的模块转成标准的JS模块
+在用 Loader 对一个模块转换完后，使用 acorn 解析转换后的内容，输出对应的抽象语法树（AST），以方便 Webpack 后面对代码的分析。
+从配置的入口模块开始，分析其 AST，当遇到require等导入其它模块语句时，便将其加入到依赖的模块列表，同时对新找出的依赖模块递归分析，最终搞清所有模块的依赖关系
+
+3. seal 输出资源
+seal方法主要是要生成chunks，对chunks进行一系列的优化操作，并生成要输出的代码webpack 中的 chunk ，可以理解为配置在 entry 中的模块，或者是动态引入的模块。根据入口和模块之间的依赖关系，组装成一个个包含多个模块的 Chunk，再把每个 Chunk 转换成一个单独的文件加入到输出列表
+
+4. emit 输出完成
+在确定好输出内容后，根据配置确定输出的路径和文件名
 
 ```js
 class Compiler extends Tapable {
