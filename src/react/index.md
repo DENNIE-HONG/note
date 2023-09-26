@@ -125,6 +125,24 @@ componentDidUpdate(prevProps, prevState, snapshot) {
 ## 4. setState
 调用this.updater.enqueneSetState  ——> addUpdate(向队列中推入需要更新fiber) ——> scheduleUpdate（触发调度器一次新更新）
 
+
+### enqueneSetState
+
+```js
+Component.prototype.setState = function(partialState, callback) {
+    // 第一个参数可以是对象, 函数，第二个参数是回调
+    invariant(
+        typeof partialState === 'object' ||
+        typeof partialState === 'function' ||
+        partialState == null,
+        'setState(...): takes an object of state variables to update or a ' +
+        'function which returns an object of state variables.',
+    );
+    this.updater.enqueueSetState(this, partialState, callback, 'setState');
+};
+
+```
+
 **scheduleUpdate**:
 从当前触发节点向上搜索。父节点不是hostRoot(ReactDOM.render()的根节点)，且更新父节点的peddingWorkPriority,标记这个节点上等待更新事务的优先级。
 父节点是hostRoot, 调用scheduleRoot,根据优先级决定是否立即执行update。

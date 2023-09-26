@@ -56,6 +56,7 @@ webpack是一个模块打包器，可以用loader和plugin扩展，基于tapable
 
 
 ### loader
+默认情况下，在遇到import或者require加载模块的时候，webpack只支持对js 和 json 文件打包。
 webpack中提供了一种处理多种文件格式的机制，这便是Loader。 我们可以把Loader当成一个转换器，它可以将某种格式的文件转换成Wwebpack支持打包的模块。  
 我们常见的Javascript、CSS、Less、Typescript、Jsx、图片等文件都是模块，不同模块的加载是通过模块加载器来统一管理的，当我们需要使用不同的 Loader 来解析不同类型的文件。  
 多个loader串联使用，执行顺序是最后一个到第一个：
@@ -816,13 +817,14 @@ context.compiler.hooks.watchRun.tap('WebpackDevMiddleware', (comp, callback) => 
 #### 5. 浏览器接收到热更新通知
 <font color="red">'xxx/node-modules/webpack-dev-server/client/index.js?http://localhost:8080'</font>  
 打包到bundle.js中，运行在浏览器中。伪代码：
+
 ```js
 var socketMessage = {
-    ...
+    // ...
     hash: function hash(_hash) {
         status.currentHash = _hash;
     }
-    ...
+    // ...
     ok: function ok() {
         sendMessage('ok');
         // 进行更新检查等操作
