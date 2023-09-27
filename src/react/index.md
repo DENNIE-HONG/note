@@ -123,10 +123,12 @@ componentDidUpdate(prevProps, prevState, snapshot) {
 
 
 ## 4. setState
-调用this.updater.enqueneSetState  ——> addUpdate(向队列中推入需要更新fiber) ——> scheduleUpdate（触发调度器一次新更新）
+调用this.updater.enqueneSetState  ——> enqueueUpdate(向队列中推入需要更新fiber) ——> scheduleUpdateOnFiber（触发调度器一次新更新）
 
 
 ### enqueneSetState
+
+>源码路径 https://github.com/facebook/react/blob/v17.0.2/packages/react/src/ReactBaseClasses.js
 
 ```js
 Component.prototype.setState = function(partialState, callback) {
@@ -143,6 +145,88 @@ Component.prototype.setState = function(partialState, callback) {
 
 ```
 
+
+### enqueueSetState
+
+>源码路径 https://github.com/facebook/react/blob/v17.0.2/packages/react-reconciler/src/ReactFiberClassComponent.new.js
+
+```js
+export function createUpdate(eventTime: number, lane: Lane): Update<*> {
+  const update: Update<*> = {
+    eventTime,
+    lane,
+
+    tag: UpdateState,
+    payload: null,
+    callback: null,
+
+    next: null,
+  };
+  return update;
+}
+
+/**
+ * @param inst 即调用 this.setState 时传递进来的this，也就是 class组件实例
+ * @param payload 即调用 this.setState 时传递进来的初始state，
+ * @param callback 即调用 this.setState 时传递进来的 回调函数，该回调函数是可选的
+*/
+enqueueSetState(inst, payload, callback) {
+    
+    const fiber = getInstance(inst);
+    // 获取当前时间，通过 performance.now() 或 Date.now() 获取的秒数
+    const eventTime = requestEventTime();
+    // 创建一个优先级变量(lane模型，通常称为车道模型)
+    const lane = requestUpdateLane(fiber);
+    // 创建一个 update 对象
+    const update = createUpdate(eventTime, lane);
+    // 将 stateState 传进来的要更新的对象添加到 update 上
+    update.payload = payload;
+    if (callback !== undefined && callback !== null) {
+        //...
+        update.callback = callback;
+    }
+     // 将新建的 update 添加到 update链表中
+    enqueueUpdate(fiber, update);
+     // 进入任务调度流程
+    scheduleUpdateOnFiber(fiber, lane, eventTime);
+
+    //...
+
+    if (enableSchedulingProfiler) {
+      markStateUpdateScheduled(fiber, lane);
+    }
+},
+```
+
+
+### enqueueUpdate
+
+> https://github.com/facebook/react/blob/v17.0.2/packages/react-reconciler/src/ReactUpdateQueue.new.js
+```js
+
+export function enqueueUpdate<State>(fiber: Fiber, update: Update<State>) {
+    const updateQueue = fiber.updateQueue;
+    // 还没挂载才会null
+    if (updateQueue === null) {
+        // Only occurs if the fiber has been unmounted.
+        return;
+    }
+
+    const sharedQueue: SharedQueue<State> = (updateQueue: any).shared;
+    const pending = sharedQueue.pending;
+    // 首次更新
+    if (pending === null) {
+        // This is the first update. Create a circular list.
+        update.next = update;
+    } else {
+        update.next = pending.next;
+        pending.next = update;
+    }
+    sharedQueue.pending = update;
+
+}
+```
+
 **scheduleUpdate**:
 从当前触发节点向上搜索。父节点不是hostRoot(ReactDOM.render()的根节点)，且更新父节点的peddingWorkPriority,标记这个节点上等待更新事务的优先级。
 父节点是hostRoot, 调用scheduleRoot,根据优先级决定是否立即执行update。
@@ -151,6 +235,53 @@ Component.prototype.setState = function(partialState, callback) {
 
 
 
+
+### 更新类型
+setState更新类型分成：
+* 异步更新
+* 同步更新
+
+
+**异步更新**
+
+```js
+changeText() {
+  this.setState({
+    message: "你好啊"
+  })
+  console.log(this.state.message); // Hello World
+}
+```
+从上面可以看到，最终打印结果为Hello world，并不能在执行完setState之后立马拿到最新的state的结果
+如果想要立刻获取更新后的值，在第二个参数的回调中更新后会执行
+
+```js
+changeText() {
+  this.setState({
+    message: "你好啊"
+  }, () => {
+    console.log(this.state.message); // 你好啊
+  });
+}
+```
+
+**同步更新**
+
+```js
+changeText() {
+  setTimeout(() => {
+    this.setState({
+      message: "你好啊
+    });
+    console.log(this.state.message); // 你好啊
+  }, 0);
+}
+
+
+```
+
+在组件生命周期或React合成事件中，setState是异步
+在setTimeout或者原生dom事件中，setState是同步
 
 
 ## 5. 组件的实现与挂载
