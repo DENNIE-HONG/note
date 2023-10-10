@@ -318,6 +318,7 @@ function dispatchAction(fiber, queue, action) {
                     const eagerState = lastRenderedReducer(currentState, action); /**/
                     update.eagerReducer = lastRenderedReducer;
                     update.eagerState = eagerState;
+                    //!!!! 进行了浅比较，一样是不更新的
                     if (is(eagerState, currentState)) { 
                         return
                     }

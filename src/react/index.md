@@ -757,7 +757,7 @@ lastPlacedIndex =0;
 
 // 第二轮遍历开始
 newChildren === cdb，// 没用完，不需要执行删除旧节点
-oldFibe === bcd，// 没用完，不需要执行插入新节点
+oldFiber === bcd，// 没用完，不需要执行插入新节点
 
 // 将剩余oldFiber（bcd）保存为map
 
@@ -828,7 +828,7 @@ function reconcileChildrenArray(
 
     // 1.将老的key映射保存在map中
     const existingChildren: ExistingChildren = new Map();
-    // 老第一个节点
+    // 第一个老节点
     let current = currentFirstChild; 
     while (current !== null) {
         const keyToUse = current.key !== null ? current.key : current.index;
