@@ -1161,7 +1161,10 @@ export function injectEventPluginsByName(injectedNamesToPlugins){
 ```js
 const eventPluginOrder = [ 'SimpleEventPlugin' , 'EnterLeaveEventPlugin','ChangeEventPlugin','SelectEventPlugin' , 'BeforeInputEventPlugin' ]
 
-// 形成上面说的那个plugins,数组
+
+/**
+ * @function 形成上面说的那个plugins数组, 填充形成 registrationNameDependencies等
+*/
 function recomputePluginOrdering(){
     for (const pluginName in namesToPlugins) {
         /* 找到对应的事件处理插件，比如 SimpleEventPlugin  */
@@ -1290,9 +1293,9 @@ function addTrappedEventListener(targetContainer,topLevelType,eventSystemFlags,c
 }
 
 ```
-① 在React，diff DOM元素类型的fiber的props的时候， 如果发现是React合成事件，比如onClick，会按照事件系统逻辑单独处理。
-② 根据React合成事件类型，找到对应的原生事件的类型，然后调用判断原生事件类型，大部分事件都按照冒泡逻辑处理，少数事件会按照捕获逻辑处理（比如scroll事件）。
-③ 调用 addTrappedEventListener 进行真正的事件绑定，绑定在document上，dispatchEvent 为统一的事件处理函数。
+① 在React，diff DOM元素类型的fiber的props的时候， 如果发现是React合成事件，比如onClick，会按照事件系统逻辑单独处理。  
+② 根据React合成事件类型，找到对应的原生事件的类型，然后调用判断原生事件类型，大部分事件都按照冒泡逻辑处理，少数事件会按照捕获逻辑处理（比如scroll事件）。  
+③ 调用 addTrappedEventListener 进行真正的事件绑定，绑定在document上，dispatchEvent 为统一的事件处理函数。  
 ④ 有一点值得注意: 只有上述那几个特殊事件比如 scorll,focus,blur等是在事件捕获阶段发生的，其他的都是在事件冒泡阶段发生的，无论是onClick还是onClickCapture都是发生在冒泡阶段，至于 React 本身怎么处理捕获逻辑的。我们接下来会讲到。
 
 ### 事件触发
@@ -1327,8 +1330,8 @@ function attemptToDispatchEvent(topLevelType,eventSystemFlags,targetContainer,na
 
 
 ```
-首先根据真实的事件源对象，找到 e.target 真实的 dom 元素。
-② 然后根据dom元素，找到与它对应的 fiber 对象targetInst，在我们 demo 中，找到 button 按钮对应的 fiber。
+首先根据真实的事件源对象，找到 e.target 真实的 dom 元素。  
+② 然后根据dom元素，找到与它对应的 fiber 对象targetInst，在我们 demo 中，找到 button 按钮对应的 fiber。  
 ③ 然后正式进去legacy模式的事件处理系统，
 
 
@@ -1340,11 +1343,11 @@ function dispatchEventForLegacyPluginEventSystem(topLevelType,eventSystemFlags,n
     /* 从React 事件池中取出一个，将 topLevelType ，targetInst 等属性赋予给事件  */
     const bookKeeping = getTopLevelCallbackBookKeeping(topLevelType,nativeEvent,targetInst,eventSystemFlags);
     try { /* 执行批量更新 handleTopLevel 为事件处理的主要函数 */
-    batchedEventUpdates(handleTopLevel, bookKeeping);
-  } finally {
-    /* 释放事件池 */  
-    releaseTopLevelCallbackBookKeeping(bookKeeping);
-  }
+        batchedEventUpdates(handleTopLevel, bookKeeping);
+    } finally {
+        /* 释放事件池 */  
+        releaseTopLevelCallbackBookKeeping(bookKeeping);
+    }
 }
 
 
@@ -1355,7 +1358,7 @@ export function batchedEventUpdates(fn,a){
     isBatchingEventUpdates = true;
     try{
        fn(a) // handleTopLevel(bookKeeping)
-    }finally{
+    } finally{
         isBatchingEventUpdates = false
     }
 }
@@ -1373,7 +1376,7 @@ function handleTopLevel(bookKeeping){
     for(let i=0; i < plugins.length;i++ ){
         const possiblePlugin = plugins[i];
         /* 找到对应的事件插件，形成对应的合成event，形成事件执行队列  */
-        const  extractedEvents = possiblePlugin.extractEvents(topLevelType,targetInst,nativeEvent,eventTarget,eventSystemFlags)  
+        const extractedEvents = possiblePlugin.extractEvents(topLevelType,targetInst,nativeEvent,eventTarget,eventSystemFlags)  
     }
     if (extractedEvents) {
         events = accumulateInto(events, extractedEvents);
@@ -1387,7 +1390,7 @@ function handleTopLevel(bookKeeping){
 #### extractEvents 形成事件对象event 和 事件处理函数队列
 
 ```js
-const  SimpleEventPlugin = {
+const SimpleEventPlugin = {
     extractEvents:function(topLevelType,targetInst,nativeEvent,nativeEventTarget){
         const dispatchConfig = topLevelEventsToDispatchConfig.get(topLevelType);
         if (!dispatchConfig) {
@@ -1395,8 +1398,8 @@ const  SimpleEventPlugin = {
         }
         switch(topLevelType){
             default:
-            EventConstructor = SyntheticEvent;
-            break;
+                EventConstructor = SyntheticEvent;
+                break;
         }
         /* 产生事件源对象 */
         const event = EventConstructor.getPooled(dispatchConfig,targetInst,nativeEvent,nativeEventTarget)
@@ -1405,38 +1408,38 @@ const  SimpleEventPlugin = {
         const {bubbled, captured} = phasedRegistrationNames; /* onClick / onClickCapture */
         const dispatchInstances = [];
         /* 从事件源开始逐渐向上，查找dom元素类型HostComponent对应的fiber ，收集上面的React合成事件，onClick / onClickCapture  */
-         while (instance !== null) {
-              const {stateNode, tag} = instance;
-              if (tag === HostComponent && stateNode !== null) { /* DOM 元素 */
-                   const currentTarget = stateNode;
-                   if (captured !== null) { /* 事件捕获 */
-                        /* 在事件捕获阶段,真正的事件处理函数 */
-                        const captureListener = getListener(instance, captured);
-                        if (captureListener != null) {
-                        /* 对应发生在事件捕获阶段的处理函数，逻辑是将执行函数unshift添加到队列的最前面 */
-                            dispatchListeners.unshift(captureListener);
-                            dispatchInstances.unshift(instance);
-                            dispatchCurrentTargets.unshift(currentTarget);
-                        }
+        while (instance !== null) {
+            const {stateNode, tag} = instance;
+            if (tag === HostComponent && stateNode !== null) { /* DOM 元素 */
+                const currentTarget = stateNode;
+                if (captured !== null) { /* 事件捕获 */
+                    /* 在事件捕获阶段,真正的事件处理函数 */
+                    const captureListener = getListener(instance, captured);
+                    if (captureListener != null) {
+                    /* 对应发生在事件捕获阶段的处理函数，逻辑是将执行函数unshift添加到队列的最前面 */
+                        dispatchListeners.unshift(captureListener);
+                        dispatchInstances.unshift(instance);
+                        dispatchCurrentTargets.unshift(currentTarget);
                     }
-                    if (bubbled !== null) { /* 事件冒泡 */
-                        /* 事件冒泡阶段，真正的事件处理函数，逻辑是将执行函数push到执行队列的最后面 */
-                        const bubbleListener = getListener(instance, bubbled);
-                        if (bubbleListener != null) {
-                            dispatchListeners.push(bubbleListener);
-                            dispatchInstances.push(instance);
-                            dispatchCurrentTargets.push(currentTarget);
-                        }
+                }
+                if (bubbled !== null) { /* 事件冒泡 */
+                    /* 事件冒泡阶段，真正的事件处理函数，逻辑是将执行函数push到执行队列的最后面 */
+                    const bubbleListener = getListener(instance, bubbled);
+                    if (bubbleListener != null) {
+                        dispatchListeners.push(bubbleListener);
+                        dispatchInstances.push(instance);
+                        dispatchCurrentTargets.push(currentTarget);
                     }
-              }
-              instance = instance.return;
-         }
-          if (dispatchListeners.length > 0) {
-              /* 将函数执行队列，挂到事件对象event上 */
+                }
+            }
+            instance = instance.return;
+        }
+        if (dispatchListeners.length > 0) {
+            /* 将函数执行队列，挂到事件对象event上 */
             event._dispatchListeners = dispatchListeners;
             event._dispatchInstances = dispatchInstances;
             event._dispatchCurrentTargets = dispatchCurrentTargets;
-         }
+        }
         return event
     }
 }
@@ -1444,8 +1447,8 @@ const  SimpleEventPlugin = {
 
 ```
 
-① 首先形成React事件独有的合成事件源对象，这个对象，保存了整个事件的信息。将作为参数传递给真正的事件处理函数(handerClick)。
-② 然后声明事件执行队列 ，按照冒泡和捕获逻辑，从事件源开始逐渐向上，查找dom元素类型HostComponent对应的fiber ，收集上面的 React 合成事件，例如 onClick / onClickCapture ，对于冒泡阶段的事件(onClick)，将 push 到执行队列后面 ， 对于捕获阶段的事件(onClickCapture)，将 unShift到执行队列的前面。
+① 首先形成React事件独有的合成事件源对象，这个对象，保存了整个事件的信息。将作为参数传递给真正的事件处理函数(handerClick)。  
+② 然后声明事件执行队列 ，按照冒泡和捕获逻辑，从事件源开始逐渐向上，查找dom元素类型HostComponent对应的fiber ，收集上面的 React 合成事件，例如 onClick / onClickCapture ，对于冒泡阶段的事件(onClick)，将 push 到执行队列后面 ， 对于捕获阶段的事件(onClickCapture)，将 unShift到执行队列的前面。  
 ③ 最后将事件执行队列，保存到React事件源对象上。等待执行。
 
 
