@@ -1,5 +1,11 @@
 # React
 
+* 用于构建用户界面的js库，提供UI层解决方案
+* 虚拟DOM
+* JSX语法
+* 单向数据流
+* 组件，可组合、嵌套，构成整体页面
+
 ## 1. React V16
 新特性：
 1. react hooks；
@@ -1459,21 +1465,21 @@ function runEventsInBatch(){
     const dispatchListeners = event._dispatchListeners;
     const dispatchInstances = event._dispatchInstances;
     if (Array.isArray(dispatchListeners)) {
-    for (let i = 0; i < dispatchListeners.length; i++) {
-      if (event.isPropagationStopped()) { /* 判断是否已经阻止事件冒泡 */
-        break;
-      }
-      
-      dispatchListeners[i](event)
+        for (let i = 0; i < dispatchListeners.length; i++) {
+            if (event.isPropagationStopped()) { /* 判断是否已经阻止事件冒泡 */
+                break;
+            }
+            
+            dispatchListeners[i](event);
+        }
     }
-  }
-  /* 执行完函数，置空两字段 */
-  event._dispatchListeners = null;
-  event._dispatchInstances = null;
+    /* 执行完函数，置空两字段 */
+    event._dispatchListeners = null;
+    event._dispatchInstances = null;
 }
 
 ```
-dispatchListeners[i](event)就是执行我们的事件处理函数比如handerClick,从这里我们知道，我们在事件处理函数中，返回 false ，并不会阻止浏览器默认行为。
+"dispatchListeners[i](event);" 就是执行我们的事件处理函数比如handerClick,从这里我们知道，我们在事件处理函数中，返回 false ，并不会阻止浏览器默认行为。
 
 ①首先通过统一的事件处理函数 dispatchEvent,进行批量更新batchUpdate。
 
