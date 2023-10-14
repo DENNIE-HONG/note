@@ -10,6 +10,7 @@
 新特性：
 1. react hooks；
 2. 允许在render函数返回节点数组和字符串
+
 ```jsx
 return [
   <li>1</li>
@@ -718,7 +719,7 @@ newChildren是数组，但是比较的是上次Fiber节点，Fiber的同级节�
 
 
 
-![react-diff](../../public/react_diff.webp)
+![react-diff](../../public/react_diff.png)
 
 
 ```mermaid
