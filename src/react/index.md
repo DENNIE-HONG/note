@@ -23,9 +23,256 @@ return [
 5. 重写，改为Fiber异步渲染架构；
 
 ## 2. Fiber
-Fiber是新的reconciler
-* reconciliation: effect list
-* commit: 同步
+
+什么是fiber，fiber解决了什么问题？
+
+### v16之前的问题
+用树这种数据结构来表示dom树，采用深度优先来遍历节点，树越大，遍历时间越久。 如果其中发生中断，那么整颗树都不能恢复。 
+无法解决中断和树庞大的问题。
+
+#### 卡顿原因
+在setState后，react会立即开始reconciliation过程，从父节点（Virtual DOM）开始遍历，以找出不同。将所有的Virtual DOM遍历完成后，reconciler才能给出当前需要修改真实DOM的信息，并传递给renderer，进行渲染，然后屏幕上才会显示此次更新内容。对于特别庞大的vDOM树来说，reconciliation过程会很长(x00ms)，在这期间，主线程是被js占用的，因此任何交互、布局、渲染都会停止，给用户的感觉就是页面被卡住了
+
+
+
+
+
+
+
+
+### react@16
+狭义的fiber是一种数据结构，广义上Fiber是新的reconciler。
+
+scheduling(调度)是fiber reconciliation的一个过程，主要决定应该在何时做什么。  
+所以理想状况下reconciliation的过程应该是每次只做一个很小的任务，做完后能够“喘口气儿”，回到主线程看下有没有什么更高优先级的任务需要处理，如果又则先处理更高优先级的任务，没有则继续执行(cooperative scheduling 合作式调度)。
+
+
+
+
+
+fiber中，保存了哪些信息，这些信息的作用是什么？
+
+简单的分为四个部分，分别是Instance、Fiber、Effect、Priority
+
+
+#### Instance
+这个部分是用来存储一些对应element元素的属性
+
+
+```js
+export type Fiber = {
+  tag: WorkTag,  // 组件的类型，判断函数式组件、类组件等（上述的tag）
+  key: null | string, // key
+  elementType: any, // 元素的类型
+  type: any, // 与fiber关联的功能或类，如<div>,指向对应的类或函数
+  stateNode: any, // 真实的DOM节点
+  ...
+}
+
+```
+
+
+#### Fiber
+这部分内容存储的是关于fiber链表相关的内容和相关的props、state
+
+```js
+export type Fiber = {
+  ...
+  return: Fiber | null, // 指向父节点的fiber
+  child: Fiber | null, // 指向第一个子节点的fiber
+  sibling: Fiber | null, // 指向下一个兄弟节点的fiber
+  index: number, // 索引，是父节点fiber下的子节点fiber中的下表
+  
+  ref:
+    | null
+    | (((handle: mixed) => void) & {_stringRef: ?string, ...})
+    | RefObject,  // ref的指向，可能为null、函数或对象
+    
+  pendingProps: any,  // 本次渲染所需的props
+  memoizedProps: any,  // 上次渲染所需的props
+  updateQueue: mixed,  // 类组件的更新队列（setState），用于状态更新、DOM更新
+  memoizedState: any, // 类组件保存上次渲染后的state，函数组件保存的hooks信息
+  dependencies: Dependencies | null,  // contexts、events（事件源） 等依赖
+
+  mode: TypeOfMode, // 类型为number，用于描述fiber的模式 
+  ...
+}
+
+```
+
+#### Effect
+副作用相关的内容
+```js
+export type Fiber = {
+  ...
+   flags: Flags, // 用于记录fiber的状态（删除、新增、替换等）
+   subtreeFlags: Flags, // 当前子节点的副作用状态
+   deletions: Array<Fiber> | null, // 删除的子节点的fiber
+   nextEffect: Fiber | null, // 指向下一个副作用的fiber
+   firstEffect: Fiber | null, // 指向第一个副作用的fiber
+   lastEffect: Fiber | null, // 指向最后一个副作用的fiber
+  ...
+}
+
+
+```
+
+
+#### Priority
+优先级相关的内容
+
+
+```js
+export type Fiber = {
+  ...
+  lanes: Lanes, // 优先级，用于调度
+  childLanes: Lanes,
+
+  alternate: Fiber | null,
+
+  actualDuration?: number,
+
+  actualStartTime?: number,
+  selfBaseDuration?: number,
+
+  treeBaseDuration?: number,
+  ...
+}
+
+```
+
+
+
+
+#### 链表之间如何连接的？
+
+在 Fiber中我们看到有return、child、sibling这三个参数，分别指向父级、子级、兄弟，也就是说每个element通过这三个属性进行连接。
+
+
+
+
+
+#### Fiber执行阶段
+**mount**
+
+简单伪代码：
+这个函数会创建rootFiber，也就是react应用的根，会调用FiberNode函数来进行对应的构建工作
+```js
+const createFiber = function(
+  tag: WorkTag,
+  pendingProps: mixed,
+  key: null | string,
+  mode: TypeOfMode,
+): Fiber {
+  // $FlowFixMe: the shapes are exact here but Flow doesn't like constructors
+  return new FiberNode(tag, pendingProps, key, mode);
+};
+
+```
+createFiberRoot： 它会调用FiberRootNode构造函数，创建fiberRoot，并且指向真正的根节点（root）
+
+```js
+export function createFiberRoot(
+  containerInfo: any,
+  tag: RootTag,
+  hydrate: boolean,
+  hydrationCallbacks: null | SuspenseHydrationCallbacks,
+): FiberRoot {
+  const root: FiberRoot = (new FiberRootNode(containerInfo, tag, hydrate): any);
+  if (enableSuspenseCallback) {
+    root.hydrationCallbacks = hydrationCallbacks;
+  }
+
+  const uninitializedFiber = createHostRootFiber(tag);
+  root.current = uninitializedFiber; // 指向rootFiber
+  uninitializedFiber.stateNode = root; // 指向fiberRoot
+
+  initializeUpdateQueue(uninitializedFiber);
+
+  return root;
+}
+
+
+```
+
+beginWork: 这个函数正真走我们的jsx代码，也就是上面讲解的链表之间如何连接的部分。
+
+```js
+function beginWork(fiber: Fiber): Fiber | undefined {
+  if (fiber.tag === WorkTag.HostComponent) {
+    // 宿主节点diff
+    diffHostComponent(fiber)
+  } else if (fiber.tag === WorkTag.ClassComponent) {
+    // 类组件节点diff
+    diffClassComponent(fiber)
+  } else if (fiber.tag === WorkTag.FunctionComponent) {
+    // 函数组件节点diff
+    diffFunctionalComponent(fiber)
+  } else {
+    // ... 其他类型节点，省略
+  }
+}
+
+
+```
+
+
+
+
+
+### reconciliation(协调阶段)
+
+可以认为是 Diff 阶段, 这个阶段可以被中断, 这个阶段会找出所有节点变更，例如节点新增、删除、属性变更等等, 这些变更React 称之为'副作用(Effect)' 。  
+一旦reconciliation过程得到时间片，就开始进入work loop。
+
+举个栗子：
+> 链接：https://juejin.cn/post/6844903582622285831
+
+当前页面包含一个列表，通过该列表渲染出一个button和一组Item，Item中包含一个div，其中的内容为数字。通过点击button，可以使列表中的所有数字进行平方。另外有一个按钮，点击可以调节字体大小。
+
+  
+* current: 在视图层渲染的树。
+* workInProgress：这个参数尤为重要，它就是在整个内存中所构建的 Fiber树，所有的更新都发生在workInProgress中，所以这个树是最新状态的，之后它将替换给current
+
+
+![reconciliation](../../public/reconciliation.jpg)
+
+1. 因为根节点上的更新队列为空，所以直接从fiber-tree上将根节点复制到workInProgressTree中去。根节点中包含指向子节点（List）的指针。
+
+![reconciliation-1](../../public/reconciliation-1.jpg)
+
+2. 根节点没有什么更新操作，根据其child指针，接下来把List节点及其对应的update queue也复制到workinprogress中。List插入后，向其父节点返回，标志根节点的处理完成。
+
+![reconciliation-2](../../public/reconciliation-2.jpg)
+
+3. 根节点处理完成后，react此时检查时间片是否用完。如果没有用完，根据其保存的下个工作单元的信息开始处理下一个节点List。
+
+
+4. 在获取到最新的state值后，react会更新List的state和props值，然后调用render，然后得到一组通过更新后的list值生成的elements。react会根据生成elements的类型，来决定fiber是否可重用。对于当前情况来说，新生成的elments类型并没有变（依然是Button和Item），所以react会直接从fiber-tree中复制这些elements对应的fiber到workInProgress 中。并给List打上标签，因为这是一个需要更新的节点。
+![reconciliation-3](../../public/reconciliation-3.jpg)
+
+
+5. List节点处理完成，react仍然会检查当前时间片是否够用。如果够用则处理下一个，也就是button。加入这个时候，用户点击了放大字体的按钮。这个放大字体的操作，纯粹由js实现，跟react无关。但是操作并不能立即生效，因为react的时间片还未用完，因此接下来仍然要继续处理button。
+button没有任何子节点，所以此时可以返回，并标志button处理完成。如果button有改变，需要打上tag，但是当前情况没有，只需要标记完成即可。
+
+
+![reconciliation-4](../../public/reconciliation-4.jpg)
+
+
+6. 处理完一个节点先看时间够不够用。注意这里放大字体的操作已经在等候释放主线程了。
+接下来处理第一个item。通过shouldComponentUpdate钩子可以根据传入的props判断其是否需要改变。对于第一个Item而言，更改前后都是1,所以不会改变，shouldComponentUpdate返回false，复制div，处理完成，检查时间，如果还有时间进入第二个Item。  
+第二个Item shouldComponentUpdate返回true，所以需要打上tag，标志需要更新，复制div，调用render，讲div中的内容从2更新为4，因为div有更新，所以标记div。当前节点处理完成。
+这时候，需要将此节点改变产生的effect合并到父节点中。此时react会维护一个列表，其中记录所有产生effect的元素。
+![reconciliation-5](../../public/reconciliation-5.jpg)
+
+
+7. 下一个工作单元是Item，在进入Item之前，检查时间。但这个时候时间用完了。此时react必须交换主线程，并告诉主线程以后要为其分配时间以完成剩下的操作。  
+主线程接下来进行放大字体的操作。完成后执行react接下来的操作，跟上一个Item的处理流程几乎一样，处理完成后整个fiber-tree和workInProgress如下：
+![reconciliation-6](../../public/reconciliation-6.jpg)
+
+8. 此时List向根节点返回并merge effect，所有节点都可以标记完成了。此时react将workInProgress标记为pendingCommit。意思是可以进入commit阶段了。
+
+
 
 
 ```mermaid
@@ -34,35 +281,33 @@ graph LR
 
 
 ```
-更新后： alternate成为新的current fiber
-```js
-fiber {
-  tag: fiber类型,
-  alternate: 更新时克隆出的fiber,
-  'return': 指向fiber树中的父节点,
-  child: 第一个节点,
-  sibling: 兄弟节点,
-  effectTag: side effect类型,
-  pendingWorkPriority: 标记子树上更新任务优先级,
-  nextEffect: 单链表结构，方便遍历fiber树上有副作用节点,
-}
-```
-### reconciliation
-fiber phase 1: render reconciliation, 调用的生命周期方法：
-* componentWillMount
-* componnetWillReceiveProps
-* shouldComponentUpdate
-* componentWillUpdate
 
 
-### commiet
-fiber phase 2: commit
-* componentDidMount（commit 2阶段）
-* componentDidUpdate(commit 2阶段)
-* componentWillUnmount(commit 1阶段)
 
-如果effectTag是Deletion, 调用commitDeletion做处理。
-commitDeletion会递归地将子节点从fiber树上移除，对于节点上存在的ref做detach,调用componentWillUnmount生命周期钩子。最后调用renderer传入平台相关方法removeChild和removeChildFromContainer更新UI.
+
+
+
+### commit(提交阶段)
+提交阶段: 将上一个阶段计算出来的需要处理的**副作用(Effects)**一次性执行了。这个阶段必须同步执行，不能被打断. 
+
+
+
+### 问题
+1. 有react fiber，为什么不需要 vue fiber呢?
+A: react中，调用setState方法后，会自顶向下重新渲染组件，自顶向下的含义是，该组件以及它的子组件全部需要渲染；  
+而vue使用Object.defineProperty（vue@3迁移到了Proxy）对数据的设置（setter）和获取（getter）做了劫持，也就是说，vue能准确知道视图模版中哪一块用到了这个数据，并且在这个数据修改时，告诉这个视图，你需要重新渲染了。
+
+
+
+2. 之前递归遍历虚拟dom树被打断就得从头开始，为什么有了react fiber就能断点恢复呢?  
+A: 之前的dom树数据结构是树，节点只有子节点信息，打断之后，无法通过父节点继续遍历。  
+fiber是链表结构，有3个指针：指向父节点、子节点、兄弟节点。当遍历发生中断时，只要保留下当前节点的索引，断点是可以恢复的——因为每个节点都保持着对其父节点的索引。
+
+
+
+
+
+
 
 ## 3. 生命周期
 
@@ -963,6 +1208,13 @@ function updateFromMap(
 
 
 ## 7. 任务调度
+
+React 渲染的过程可以被中断，可以将控制权交回浏览器，让位给高优先级的任务，浏览器空闲后再恢复渲染。
+
+
+通过超时检查的机制来让出控制权。解决办法是: 确定一个合理的运行时长，然后在合适的检查点检测是否超时(比如每执行一个小任务)，如果超时就停止执行，将控制权交换给浏览器。  
+其实浏览器提供了相关的接口 —— requestIdleCallback
+
 利用window.requestIdleCallback实现task scheduling
 ```js
                                                       |
@@ -982,6 +1234,11 @@ requestIdleCallback回调执行时间：
 
 ### 如何调度时间才能保证流畅？
 安排xxms来更新视图与虚拟DOM，再安排xxms给浏览器来做其他事情。
+
+
+
+
+
 利用requestIdleCalllback(闲时调用)
 ```js
 function updateFiberAndView(dl) {
