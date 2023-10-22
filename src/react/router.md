@@ -726,3 +726,700 @@ export function createHashHistory(
 }
 
 ```
+
+
+
+
+
+
+
+
+
+### 深入Router
+不过我们一般不会直接使用Router，更多会使用已经封装好路由导航对象的BrowserRouter（react-router-dom包引入）、HashRouter（react-router-dom包引入）和MemoryRouter（react-router包引入）。
+
+#### 两个**Context**
+用于存储全局的路由导航对象以及导航位置的上下文。
+
+```ts
+import React from 'react'
+import type {
+  History,
+  Location,
+} from "history";
+import {
+  Action as NavigationType,
+} from "history";
+
+// 只包含，go、push、replace、createHref 四个方法的 History 对象，用于在 react-router 中进行路由跳转
+export type Navigator = Pick<History, "go" | "push" | "replace" | "createHref">;
+
+interface NavigationContextObject {
+  basename: string;
+  navigator: Navigator;
+  static: boolean;
+}
+
+/**
+ * 内部含有 navigator 对象的全局上下文，官方不推荐在外直接使用
+ */
+const NavigationContext = React.createContext<NavigationContextObject>(null!);
+
+
+interface LocationContextObject {
+  location: Location;
+  navigationType: NavigationType;
+}
+/**
+ * 内部含有当前 location 与 action 的 type，一般用于在内部获取当前 location，官方不推荐在外直接使用
+ */
+const LocationContext = React.createContext<LocationContextObject>(null!);
+
+// 这是官方对于上面两个 context 的导出，可以看到都是被定义为不安全的，并且可能会有着重大更改，强烈不建议使用
+/** @internal */
+export {
+  NavigationContext as UNSAFE_NavigationContext,
+  LocationContext as UNSAFE_LocationContext,
+};
+
+```
+
+#### 定义Router
+
+```tsx
+// 接上面，这里额外还从 history 中引入了 parsePath 方法
+import {
+  parsePath
+} from "history";
+
+export interface RouterProps {
+  // 路由前缀
+  basename?: string;
+  children?: React.ReactNode;
+  // 必传，当前 location
+  /*
+      interface Location {
+            pathname: string;
+            search: string;
+            hash: string;
+            state: any;
+            key: string;
+      }
+  */
+  location: Partial<Location> | string;
+  // 当前路由跳转的类型，有 POP，PUSH 与 REPLACE 三种
+  navigationType?: NavigationType;
+  // 必传，history 中的导航对象，我们可以在这里传入统一外部的 history
+  navigator: Navigator;
+  // 是否为静态路由（ssr）
+  static?: boolean;
+}
+
+/**
+ * 提供渲染 Route 的上下文，但是一般不直接使用这个组件，会包装在 BrowserRouter 等二次封装的路由中
+ * 整个应用程序应该只有一个 Router
+ * Router 的作用就是格式化传入的原始 location 并渲染全局上下文 NavigationContext、LocationContext
+ */
+export function Router({
+  basename: basenameProp = "/",
+  children = null,
+  location: locationProp,
+  navigationType = NavigationType.Pop,
+  navigator,
+  static: staticProp = false
+}: RouterProps): React.ReactElement | null {
+  // 断言，Router 不能在其余 Router 内部，否则抛出错误
+  invariant(
+    !useInRouterContext(),
+    `You cannot render a <Router> inside another <Router>.` +
+      ` You should never have more than one in your app.`
+  );
+  // 格式化 basename，去掉 url 中多余的 /，比如 /a//b 改为 /a/b
+  let basename = normalizePathname(basenameProp);
+  // 全局的导航上下文信息，包括路由前缀，导航对象等
+  let navigationContext = React.useMemo(
+    () => ({ basename, navigator, static: staticProp }),
+    [basename, navigator, staticProp]
+  );
+
+  // 转换 location，传入 string 将转换为对象
+  if (typeof locationProp === "string") {
+    // parsePath 用于将 locationProp 转换为 Path 对象，都是 history 库引入的
+    /*
+        interface Path {
+              pathname: string;
+              search: string;
+              hash: string;
+        }
+    */
+    locationProp = parsePath(locationProp);
+  }
+
+  let {
+    pathname = "/",
+    search = "",
+    hash = "",
+    state = null,
+    key = "default"
+  } = locationProp;
+
+  // 经过抽离 base 后的真正的 location，如果抽离 base 失败返回 null
+  let location = React.useMemo(() => {
+    // stripBasename 用于去除 pathname 前面 basename 部分
+    let trailingPathname = stripBasename(pathname, basename);
+
+    if (trailingPathname == null) {
+      return null;
+    }
+
+    return {
+      pathname: trailingPathname,
+      search,
+      hash,
+      state,
+      key
+    };
+  }, [basename, pathname, search, hash, state, key]);
+
+  if (location == null) {
+    return null;
+  }
+
+  return (
+    // 唯一传入 location 的地方
+    <NavigationContext.Provider value={navigationContext}>
+      <LocationContext.Provider
+        children={children}
+        value={{ location, navigationType }}
+      />
+    </NavigationContext.Provider>
+  );
+}
+
+```
+只是提供Context与格式化外部传入的location对象（而实际上这个location对象一般也不用我们传入）
+
+
+#### 使用Router
+
+以MemoryRouter 源码解析为例（BrowserRouter与HashRouter跟它原理类似）
+
+```tsx
+import type { InitialEntry, MemoryHistory } from 'history';
+import { createMemoryHistory } from 'history';
+
+export interface MemoryRouterProps {
+  // 路由前缀
+  basename?: string;
+  children?: React.ReactNode;
+  // 与 createMemoryHistory 返回的 history 对象参数相对应，代表的是自定义的页面栈与索引
+  initialEntries?: InitialEntry[];
+  initialIndex?: number;
+}
+
+/**
+ * react-router 里面只有 MemoryRouter，其余的 router 在 react-router-dom 里
+ */
+export function MemoryRouter({
+  basename,
+  children,
+  initialEntries,
+  initialIndex
+}: MemoryRouterProps): React.ReactElement {
+  // history 对象的引用
+  let historyRef = React.useRef<MemoryHistory>();
+  if (historyRef.current == null) {
+    // 创建 memoryHistory
+    historyRef.current = createMemoryHistory({ initialEntries, initialIndex });
+  }
+
+  let history = historyRef.current;
+  let [state, setState] = React.useState({
+    action: history.action,
+    location: history.location
+  });
+
+  // 监听 history 改变，改变后重新 setState
+  React.useLayoutEffect(() => history.listen(setState), [history]);
+
+  // 简单的初始化并将相应状态与 React 绑定
+  return (
+    <Router
+      basename={basename}
+      children={children}
+      location={state.location}
+      navigationType={state.action}
+      navigator={history}
+    />
+  );
+}
+
+
+```
+高阶路由其实就是将history库与我们声明的Router组件绑定起来，当history.listen监听到路由改变后重新设置当前的location与action。
+一般不会直接使用Router组件，而是使用react-router内部提供的高阶Router组件，而这些高阶组件实际上就是将history库中提供的导航对象与Router组件连接起来，进而控制应用的导航状态。
+
+
+#### 开始配置 Route
+
+```tsx
+import { render } from "react-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route
+} from "react-router-dom";
+// 这几个页面不用管它
+import App from "./App";
+import Expenses from "./routes/expenses";
+import Invoices from "./routes/invoices";
+
+const rootElement = document.getElementById("root");
+render(
+  <BrowserRouter>
+    <Routes>
+      <Route path="/" element={<App />} />
+      <Route path="/expenses" element={<Expenses />} />
+      <Route path="/invoices" element={<Invoices />} />
+    </Routes>
+  </BrowserRouter>,
+  rootElement
+);
+
+```
+APP内部：
+
+```tsx
+import { Outlet } from 'react-router'
+export function App() {
+    return (
+        <>
+          App
+          <Outlet/>
+        </>
+    )
+}
+
+```
+Outlet，该组件用于在父路由元素中呈现它们的子路由元素。
+
+也就是说，后续子路由匹配到的内容都会放到Outlet组件中，当父路由元素在内部渲染它时，就会展示匹配到的子路由元素。
+
+
+
+#### Route源码解析
+
+```tsx
+// Route 有三种 props 类型，这里先了解内部参数的含义，下面会细讲
+export interface PathRouteProps {
+  caseSensitive?: boolean;
+  // children 代表子路由
+  children?: React.ReactNode;
+  element?: React.ReactNode | null;
+  index?: false;
+  path: string;
+}
+
+export interface LayoutRouteProps {
+  children?: React.ReactNode;
+  element?: React.ReactNode | null;
+}
+
+export interface IndexRouteProps {
+  element?: React.ReactNode | null;
+  index: true;
+}
+
+/**
+ * Route 组件内部没有进行任何操作，仅仅只是定义 props，而我们就是为了使用它的 props
+ */
+export function Route(
+  _props: PathRouteProps | LayoutRouteProps | IndexRouteProps
+): React.ReactElement | null {
+  // 这里可以看出 Route 不能够被渲染出来，渲染会直接抛出错误，证明 Router 拿到 Route 后也不会在内部操作
+  invariant(
+    false,
+    `A <Route> is only ever to be used as the child of <Routes> element, ` +
+      `never rendered directly. Please wrap your <Route> in a <Routes>.`
+  );
+}
+
+```
+它在react-router内仅仅只是个**传递参数的工具人**（后续讲Routes会细说），对用户的唯一作用就是提供命令式的路由配置方式。
+
+
+#### Routes源码解析
+
+```ts
+export interface RoutesProps {
+  children?: React.ReactNode;
+  // 用户传入的 location 对象，一般不传，默认用当前浏览器的 location
+  location?: Partial<Location> | string;
+}
+
+/**
+ * 所有的 Route 都需要 Routes 包裹，用于渲染 Route（拿到 Route 的 props 的值，不渲染真实的 DOM 节点）
+ */
+export function Routes({
+  children,
+  location
+}: RoutesProps): React.ReactElement | null {
+  return useRoutes(createRoutesFromChildren(children), location);
+}
+
+```
+调用**useRoutes**这个hook，并且使用了createRoutesFromChildren这个方法将children转换为了useRoutes的配置参数，从而得到最后的路由元素。
+
+
+**createRoutesFromChildren**:
+```tsx
+// 路由配置对象
+export interface RouteObject {
+  // 路由 path 是否匹配大小写
+  caseSensitive?: boolean;
+  // 子路由
+  children?: RouteObject[];
+  // 要渲染的组件
+  element?: React.ReactNode;
+  // 是否是索引路由
+  index?: boolean;
+  path?: string;
+}
+
+/**
+ * 将 Route 组件转换为 route 对象，提供给 useRoutes 使用
+ */
+export function createRoutesFromChildren(
+  children: React.ReactNode
+): RouteObject[] {
+  let routes: RouteObject[] = [];
+
+  // 内部逻辑很简单，就是递归遍历 children，获取 <Route /> props 上的所有信息，然后格式化后推入 routes 数组中
+  React.Children.forEach(children, element => {
+    if (!React.isValidElement(element)) {
+      // Ignore non-elements. This allows people to more easily inline
+      // conditionals in their route config.
+      return;
+    }
+
+    // 空节点，忽略掉继续往下遍历
+    if (element.type === React.Fragment) {
+      // Transparently support React.Fragment and its children.
+      routes.push.apply(
+        routes,
+        createRoutesFromChildren(element.props.children)
+      );
+      return;
+    }
+
+    // 不要传入其它组件，只能传 Route
+    invariant(
+      element.type === Route,
+      `[${
+        typeof element.type === "string" ? element.type : element.type.name
+      }] is not a <Route> component. All component children of <Routes> must be a <Route> or <React.Fragment>`
+    );
+
+    let route: RouteObject = {
+      caseSensitive: element.props.caseSensitive,
+      element: element.props.element,
+      index: element.props.index,
+      path: element.props.path
+    };
+
+    // 递归
+    if (element.props.children) {
+      route.children = createRoutesFromChildren(element.props.children);
+    }
+
+    routes.push(route);
+  });
+
+  return routes;
+}
+
+```
+结论：
+
+* react-router在路由定义时同时提供了两种方式：命令式与声明式，而这两者本质上都是调用的同一种路由生成的方法。
+* Route可以被看做一个挂载用户传入参数的对象，它不会在页面中渲染，而是会被Routes接受并解析，我们也不能单独使用它。
+* Routes与Route强绑定，有Routes则必定要传入且只能传入Route。
+
+####  useRoutes（核心概念）
+
+生命式写法举例
+
+```tsx
+import { useRoutes } from "react-router-dom";
+
+// 此时 App 返回的就是已经渲染好的路由元素了
+function App() {
+  let element = useRoutes([
+    {
+      path: "/",
+      element: <Dashboard />,
+      children: [
+        {
+          path: "/messages",
+          element: <DashboardMessages />
+        },
+        { path: "/tasks", element: <DashboardTasks /> }
+      ]
+    },
+    { path: "/team", element: <AboutPage /> }
+  ]);
+
+  return element;
+}
+
+```
+
+
+#### useRoutes源码解析
+在这里，我们又需要引入一个新的Context - RouteContext，它存储了两个属性：outlet与matches。
+
+```tsx
+/**
+ * 动态参数的定义
+ */
+export type Params<Key extends string = string> = {
+  readonly [key in Key]: string | undefined;
+};
+
+export interface RouteMatch<ParamKey extends string = string> {
+  // params 参数，比如 :id 等
+  params: Params<ParamKey>;
+  // 匹配到的 pathname
+  pathname: string;
+  /**
+   * 子路由匹配之前的路径 url，这里可以把它看做是只要以 /* 结尾路径（这是父路由的路径）中 /* 之前的部分
+   */
+  pathnameBase: string;
+  // 定义的路由对象
+  route: RouteObject;
+}
+
+interface RouteContextObject {
+  // 一个 ReactElement，内部包含有所有子路由组成的聚合组件，其实 Outlet 组件内部就是它
+  outlet: React.ReactElement | null;
+  // 一个成功匹配到的路由数组，索引从小到大层级依次变深
+  matches: RouteMatch[];
+}
+/**
+ * 包含全部匹配到的路由，官方不推荐在外直接使用
+ */
+const RouteContext = React.createContext<RouteContextObject>({
+  outlet: null,
+  matches: []
+});
+
+/** @internal */
+export {
+  RouteContext as UNSAFE_RouteContext
+};
+
+```
+
+
+#### 拆分useRoutes
+内部逻辑十分复杂，我们先来看看最外层的代码，将其逻辑拆分出来：
+
+
+
+```tsx
+
+/**
+ * 1.该 hooks 不是只调用一次，每次重新匹配到路由时就会重新调用渲染新的 element
+ * 2.当多次调用 useRoutes 时需要解决内置的 route 上下文问题，继承外层的匹配结果
+ * 3.内部通过计算所有的 routes 与当前的 location 关系，经过路径权重计算，得到 matches 数组，然后将 matches 数组重新渲染为嵌套结构的组件
+ */
+export function useRoutes(
+  routes: RouteObject[],
+  locationArg?: Partial<Location> | string
+): React.ReactElement | null {
+  // useRoutes 必须最外层有 Router 包裹，不然报错
+  invariant(
+    useInRouterContext(),
+    // TODO: This error is probably because they somehow have 2 versions of the
+    // router loaded. We can help them understand how to avoid that.
+    `useRoutes() may be used only in the context of a <Router> component.`
+  );
+
+  // 1.当此 useRoutes 为第一层级的路由定义时，matches 为空数组（默认值）
+  // 2.当该 hooks 在一个已经调用了 useRoutes 的渲染环境中渲染时，matches 含有值（也就是有 Routes 的上下文环境嵌套）
+  let { matches: parentMatches } = React.useContext(RouteContext);
+  // 最后 match 到的 route（深度最深），该 route 将作为父 route，我们后续的 routes 都是其子级
+  let routeMatch = parentMatches[parentMatches.length - 1];
+  // 下面是父级 route 的参数，我们会基于以下参数操作，如果项目中只在一个地方调用了 useRoutes，一般都会是默认值
+  let parentParams = routeMatch ? routeMatch.params : {};
+  // 父路由的完整 pathname，比如路由设置为 /foo/*，当前导航是 /foo/1，那么 parentPathname 就是 /foo/1
+  let parentPathname = routeMatch ? routeMatch.pathname : "/";
+  // 同上面的 parentPathname，不过是 /* 前的部分，也就是 /foo
+  let parentPathnameBase = routeMatch ? routeMatch.pathnameBase : "/";
+  let parentRoute = routeMatch && routeMatch.route;
+  // 获取上下文环境中的 location
+  let locationFromContext = useLocation();
+
+  // 判断是否手动传入了 location，否则用默认上下文的 location
+  let location;
+  if (locationArg) {
+    // 格式化为 Path 对象
+    let parsedLocationArg =
+      typeof locationArg === "string" ? parsePath(locationArg) : locationArg;
+    // 如果传入了 location，判断是否与父级路由匹配（作为子路由存在）
+    invariant(
+      parentPathnameBase === "/" ||
+        parsedLocationArg.pathname?.startsWith(parentPathnameBase),
+      `When overriding the location using \`<Routes location>\` or \`useRoutes(routes, location)\`, ` +
+        `the location pathname must begin with the portion of the URL pathname that was ` +
+        `matched by all parent routes. The current pathname base is "${parentPathnameBase}" ` +
+        `but pathname "${parsedLocationArg.pathname}" was given in the \`location\` prop.`
+    );
+
+    location = parsedLocationArg;
+  } else {
+    location = locationFromContext;
+  }
+
+  let pathname = location.pathname || "/";
+  // 剩余的 pathname，整体 pathname 减掉父级已经匹配的 pathname，才是本次 routes 要匹配的 pathname（适用于 parentMatches 匹配不为空的情况）
+  let remainingPathname =
+    parentPathnameBase === "/"
+      ? pathname
+      : pathname.slice(parentPathnameBase.length) || "/";
+  // 匹配当前路径，注意是移除了 parentPathname 的相关路径后的匹配
+  
+  // 通过传入的 routes 配置项与当前的路径，匹配对应渲染的路由
+  let matches = matchRoutes(routes, { pathname: remainingPathname });
+
+  // 参数为当前匹配到的 matches 路由数组和外层 useRoutes 的 matches 路由数组
+  // 返回的是 React.Element，渲染所有的 matches 对象
+  return _renderMatches(
+    // 没有 matches 会返回 null
+    matches &&
+      matches.map(match =>
+        // 合并外层调用 useRoutes 得到的参数，内部的 Route 会有外层 Route（其实这也叫父 Route） 的所有匹配属性。
+        Object.assign({}, match, {
+          params: Object.assign({}, parentParams, match.params),
+          // joinPaths 函数用于合并字符串
+          pathname: joinPaths([parentPathnameBase, match.pathname]),
+          pathnameBase:
+            match.pathnameBase === "/"
+              ? parentPathnameBase
+              : joinPaths([parentPathnameBase, match.pathnameBase])
+        })
+      ),
+    // 外层 parentMatches 部分，最后会一起加入最终 matches 参数中
+    parentMatches
+  );
+}
+
+/**
+ * 将多个 path 合并为一个
+ * @param paths path 数组
+ * @returns
+ */
+const joinPaths = (paths: string[]): string =>
+  paths.join("/").replace(/\/\/+/g, "/");
+
+
+```
+
+
+这里整体概括一下useRoutes做的事情：
+
+1. 获取上下文中调用useRoutes后的信息，如果有信息证明此次调用时作为子路由使用的，需要合并父路由的匹配信息。
+2. 移除父路由已经匹配完毕的pathname前缀后，调用matchRoutes与当前传入的routes配置相匹配，返回匹配到的matches数组。
+3. 调用_renderMatches方法，渲染上一步得到的matches数组。
+
+
+整个流程对应三个阶段：路由上下文解析阶段，路由匹配阶段，路由渲染阶段。
+
+
+#### 路由匹配阶段
+路由匹配阶段其实就是调用matchRoutes方法的过程，我们来看看这个方法：
+
+```tsx
+/**
+ * 通过 routes 与 location 得到 matches 数组
+ */
+export function matchRoutes(
+  // 用户传入的 routes 对象
+  routes: RouteObject[],
+  // 当前匹配到的 location，注意这在 useRoutes 内部是先有过处理的
+  locationArg: Partial<Location> | string,
+  // 这个参数在 useRoutes 内部是没有用到的，但是该方法是对外暴露的，用户可以使用这个参数来添加统一的路径前缀
+  basename = "/"
+): RouteMatch[] | null {
+  // 先格式化为 Path 对象
+  let location =
+    typeof locationArg === "string" ? parsePath(locationArg) : locationArg;
+
+  // 之前提到过，抽离 basename，获取纯粹的 pathname
+  let pathname = stripBasename(location.pathname || "/", basename);
+  
+  // basename 匹配失败，返回 null
+  if (pathname == null) {
+    return null;
+  }
+
+  // 1.扁平化 routes，将树状的 routes 对象根据 path 扁平为一维数组，同时包含当前路由的权重值
+  let branches = flattenRoutes(routes);
+  // 2.传入扁平化后的数组，根据内部匹配到的权重排序
+  rankRouteBranches(branches);
+
+  let matches = null;
+  // 3.这里就是权重比较完成后的解析顺序，权重高的在前面，先进行匹配，然后是权重低的匹配
+  // branches 中有一个匹配到了就终止循环，或者全都没有匹配到
+  for (let i = 0; matches == null && i < branches.length; ++i)   {
+    // 遍历扁平化的 routes，查看每个 branch 的路径匹配规则是否能匹配到 pathname
+    matches = matchRouteBranch(branches[i], pathname);
+  }
+
+  return matches;
+}
+
+```
+内部将路由的匹配分为了三个阶段：路由扁平化、路由权值计算与排序、路由匹配与合并。
+
+
+
+
+#### 路由渲染阶段
+useRoutes在内部是调用_renderMatches方法来实现的，这里先看源码：
+
+```tsx
+/**
+ * 其实就是渲染 RouteContext.Provider 组件（包括多个嵌套的 Provider）
+ */
+function _renderMatches(
+  matches: RouteMatch[] | null,
+  // 如果在已有 match 的 route 内部调用，会合并父 context 的 match
+  parentMatches: RouteMatch[] = []
+): React.ReactElement | null {
+  if (matches == null) return null;
+
+  // 生成 outlet 组件，注意这里是从后往前 reduce，所以索引在前的 match 是最外层，也就是父路由对应的 match 是最外层
+  /**
+   *  可以看到 outlet 是通过不断递归生成的组件，最外层的 outlet 递归层数最多，包含有所有的内层组件，
+   *  所以我们在外层使用的 <Outlet /> 是包含有所有子组件的聚合组件
+   * */
+  return matches.reduceRight((outlet, match, index) => {
+    return (
+      <RouteContext.Provider
+        // 如果有 element 就渲染 element，如果没有填写 element，则默认是 <Outlet />，继续渲染内嵌的 <Route />
+        children={
+          match.route.element !== undefined ? match.route.element : <Outlet />
+        }
+        // 代表当前 RouteContext 匹配到的值，matches 并不是全局状态一致的，会根据层级不同展示不同的值，最后一个层级是完全的 matches，这也是之前提到过的不要在外部使用 RouteContext 的原因
+        value={{
+          outlet,
+          matches: parentMatches.concat(matches.slice(0, index + 1))
+        }}
+      />
+    );
+    // 最内层的 outlet 为 null，也就是最后的子路由
+  }, null as React.ReactElement | null);
+}
+
+```
