@@ -219,7 +219,31 @@ type Point = PartialPointX & {y: number};
         y = 2; // error
     }
     ```
-    2. 接口可以定义多次，自动合并为单个接口
+    2.  类型别名更为通用，右边可以是任何类型、包括类型表达式；而在接口声明中，右边必须为结构； 
+    3. 扩展接口时，ts将检查扩展的接口是否可赋值给被扩展的接口。 而交集类型不会出现这种问题，ts会尽可能组合重载，而不会编译时错误，例如：
+    ```ts
+        interface A {
+            good (x: number): string;
+            bad (x: number): string;
+        }
+
+        interface B extends A {
+            good(string | number ): string;
+            bad(x: number): string 
+            // Error TS430: Interface B incorrectly extends 
+            // interface A. Type 'number' is not 
+            // assignable to type string.
+        }
+    ```
+     
+    4. 接口可以定义多次，多个同名接口将自动合并；同一个作用域中的多个同名类型别名将导致编译时错误。这个特性称为声明合并。
+
+
+#### 类和接口有什么区别？
+1. 类可以具有实现、初始化的类字段和可见性修饰符。  
+2. 类还生成JavaScript代码，因此在运行时支持   instanceof检查。类同时定义类型和值。接口只定义一个类型，不生成任何JavaScript代码，只能包含类型级成员，不能包含use修饰符。
+
+
 
 
 ### 装饰器
