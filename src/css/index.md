@@ -153,6 +153,8 @@ Block Formatting Context(块级格式化上下文)，是页面上独立的一块
 
 
 
+
+
 ## 4. 伪元素
 ::before 和 :after中双冒号和单冒号有什么区别？
 单冒号用于css伪类；
@@ -291,7 +293,41 @@ div#demo a // 0,1, 0, 2
 
 
 
+## 8.设备像素和css像素
 
+### 设备像素
+设备像素：物理像素，屏幕的最小显示单位。设备像素是显示屏的固有属性，不可改变，每台设备在制造时都确定了其设备像素数量。
+在高分辨率的显示屏上，设备像素更加密集，显示效果更加细腻。例如，若两台手机屏幕尺寸相同，但一台设备像素更多，则其显示效果更加清晰。
+
+### css像素
+CSS像素（CSS Pixel，px）是Web开发中常用的长度单位。在CSS规范中，长度单位分为绝对单位和相对单位，而CSS像素是一种相对单位。大多数情况下，1个CSS像素对应1个设备独立像素，即1:1的关系。
+
+然而，有时候1个CSS像素可能对应多个设备像素，这取决于设备的DPR（设备像素比）。
+
+### 设备独立像素
+设备独立像素（Device Independent Pixel），也称为逻辑像素或密度无关像素，是一个与设备无关的抽象单位。它是开发者可以通过程序控制使用的虚拟像素，目的是为了解决不同设备分辨率不同的问题。
+
+### 设备像素比（DPR）
+
+DPR（Device Pixel Ratio）是设备像素和设备独立像素之间的转换关系。它表示1个设备独立像素由多少个设备像素组成。
+
+计算公式如下：
+```js
+DPR = 设备像素 / 设备独立像素
+```
+当 DPR 为 1 时，屏幕上的一个逻辑像素需要 1*1 物理像素来渲染，当 DPR 为 2 时，屏幕上的一个逻辑像素需要 2*2 个物理像素来渲染，以此类推，DPR 越大需要的物理像素越多，同时画面显示就会越清晰和细腻。
+
+
+### 适配方案
+在移动设备开发中，为了确保页面在不同设备上显示良好，我们需要考虑设备的DPR和PPI，以及设备独立像素。以下是一些常用的适配方案：
+
+1. 使用rem单位：rem单位是相对于根元素（html元素）的字体大小进行计算的长度单位。通过动态设置根元素的字体大小，可以根据不同设备的DPR进行适配。
+
+2. 使用viewport标签：通过设置viewport标签，可以控制页面的缩放和布局。设置<meta name="viewport" content="width=device-width, initial-scale=1.0">可以让页面宽度等于设备宽度，并且不进行缩放。
+
+3. 使用媒体查询：媒体查询可以根据不同设备的宽度、高度、DPR等条件来应用不同的CSS样式，从而实现页面的适配。
+
+4. 使用flexbox和grid布局：flexbox和grid布局可以更加灵活地进行页面布局，适应不同设备的屏幕尺寸和分辨率。
 
 
 
@@ -418,101 +454,9 @@ a[href$=".pdf"] {
 #### word-wrap
 * break-word: 只有当一个单词整行都显示不下时才拆分换行；
 
-### 说说你了解的圣杯布局和双飞翼布局？
 
-```js
-______________________
-|  header             |
-|—————————————————————
-|left|   main   |right|
-|    |          |     |
-|    |          |     |
-|____|__________|_____|
-|       footer        |
-|_____________________|
-```
 
-```html
-<header>header</header>
-<section class="wrapper">
-  <aside>lef</aside>
-  <section>main</section>
-   <aside>right</aside>
-</section>
-<footer>footer</footer>
-```
 
-#### 1.圣杯
-```css
-.wrapper {
-  padding: 0 100px 0 100px;
-  overflow: hidden;
-}
-.main {
-  position: relative;
-  float: left;
-  width: 100%;
-  height: 200px;
-}
-.left {
-  position: relative;
-  float: left;
-  width: 100px;
-  height: 200px;
-  margin-left: -100%;
-  left: -100px;
-}
-.right {
-  position: relative;
-  float: left;
-  width: 100px;
-  height: 200px;
-  right: -100px;
-  margin-left: -100px;
-}
-```
-问题：当main部分宽度 < left部分，发生布局混乱。
-
-#### 2. 双飞翼布局
-为了修复这个问题，中间变了，多层dom
-```html
-<section class="wrapper">
-  <section class="pull-left main">
-    <section class="main-wrap">main
-    </section>
-  </section>
-  <aside class="pull-left left">left</aside>
-  <aside class="pull-left right">
-      right
-  </aside>
-</section>
-```
-```css
-.wrapper {
-  padding: 0;
-  overflow: hidden;
-}
-.pull-left {
-  float: left;
-}
-.main {
-  width: 100%;
-}
-.main-wrap {
-  margin: 0 100px 0 100px;
-  height: 200px;
-}
-.left {
-  width: 100px;
-  height: 200px;
-  margin-left: -100%;
-}
-.right {
-  width: 100px;
-  height: 200px;
-  margin-left: -100px;
-}
-```
 
 
 

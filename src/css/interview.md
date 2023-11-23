@@ -50,7 +50,25 @@ div {
 }
 ```
 
-3. 利用table
+3. 利用定位 + margin: auto
+```css
+.parent {
+    position: relative;
+}
+
+div {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: auto;
+}
+    
+```
+
+4. 利用table  
+利用vertical和text-align可以让所有的行内块级元素水平垂直居中
 ```css
 .parent {
   display: table-cell;
@@ -60,6 +78,20 @@ div {
 div {
   display: inline-block;
   vertical-align: middle;
+}
+```
+
+5. grid网格布局
+
+```css
+.parent {
+    display: grid;
+    align-items: center;
+    justify-content: center;
+}
+div {
+    width: 10px;
+    height: 10px;
 }
 ```
 
@@ -97,3 +129,105 @@ div {
   zoom: 1;
 }
 ```
+
+
+
+## 说说你了解的圣杯布局和双飞翼布局？
+
+```js
+______________________
+|  header             |
+|—————————————————————
+|left|   main   |right|
+|    |          |     |
+|    |          |     |
+|____|__________|_____|
+|       footer        |
+|_____________________|
+```
+
+```html
+<header>header</header>
+<section class="wrapper">
+  <aside>lef</aside>
+  <section>main</section>
+   <aside>right</aside>
+</section>
+<footer>footer</footer>
+```
+
+### 1.圣杯
+```css
+.wrapper {
+  padding: 0 100px 0 100px;
+  overflow: hidden;
+}
+.main {
+  position: relative;
+  float: left;
+  width: 100%;
+  height: 200px;
+}
+.left {
+  position: relative;
+  float: left;
+  width: 100px;
+  height: 200px;
+  margin-left: -100%;
+  left: -100px;
+}
+.right {
+  position: relative;
+  float: left;
+  width: 100px;
+  height: 200px;
+  right: -100px;
+  margin-left: -100px;
+}
+```
+问题：当main部分宽度 < left部分，发生布局混乱。
+
+### 2. 双飞翼布局
+为了修复这个问题，中间变了，多层dom
+```html
+<section class="wrapper">
+  <section class="pull-left main">
+    <section class="main-wrap">main
+    </section>
+  </section>
+  <aside class="pull-left left">left</aside>
+  <aside class="pull-left right">
+      right
+  </aside>
+</section>
+```
+```css
+.wrapper {
+  padding: 0;
+  overflow: hidden;
+}
+.pull-left {
+  float: left;
+}
+.main {
+  width: 100%;
+}
+.main-wrap {
+  margin: 0 100px 0 100px;
+  height: 200px;
+}
+.left {
+  width: 100px;
+  height: 200px;
+  margin-left: -100%;
+}
+.right {
+  width: 100px;
+  height: 200px;
+  margin-left: -100px;
+}
+```
+
+
+
+
