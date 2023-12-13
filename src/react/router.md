@@ -372,53 +372,53 @@ export function createMemoryHistory(
 **createBrowserHistory**
 ```ts
 export function createBrowserHistory(
-  options: BrowserHistoryOptions = {}
+    options: BrowserHistoryOptions = {}
 ): BrowserHistory {
-  let { window = document.defaultView! } = options;
-  let globalHistory = window.history;
+    let { window = document.defaultView! } = options;
+    let globalHistory = window.history;
 
-  /**
-   * 拿到当前的 state 的 idx 和 location 对象
-   */
-  function getIndexAndLocation(): [number, Location] {
-    let { pathname, search, hash } = window.location;
-    // 获取当前浏览器的 state
-    let state = globalHistory.state || {};
-    // 可以看到下面很多属性都是保存到了 history api 的 state 中
-    return [
-      state.idx,
-      readOnly<Location>({
-        pathname,
-        search,
-        hash,
-        state: state.usr || null,
-        key: state.key || 'default'
-      })
-    ];
-  }
-  let action = Action.Pop;
-  let [index, location] = getIndexAndLocation();
-  
-  // 初始化 index
-  if (index == null) {
-    index = 0;
-    // 调用的是 history api 提供的 replaceState 方法传入 index，这里只是初始化浏览器中保存的 state，没有改变 url
-    globalHistory.replaceState({ ...globalHistory.state, idx: index }, '');
-  }
-
-  //...
-
-  let history: BrowserHistory = {
-    get action() {
-      return action;
-    },
-    get location() {
-      return location;
+    /**
+     * 拿到当前的 state 的 idx 和 location 对象
+     */
+    function getIndexAndLocation(): [number, Location] {
+        let { pathname, search, hash } = window.location;
+        // 获取当前浏览器的 state
+        let state = globalHistory.state || {};
+        // 可以看到下面很多属性都是保存到了 history api 的 state 中
+        return [
+            state.idx,
+            readOnly<Location>({
+                pathname,
+                search,
+                hash,
+                state: state.usr || null,
+                key: state.key || 'default'
+            })
+        ];
     }
-    // ...
-  };
+    let action = Action.Pop;
+    let [index, location] = getIndexAndLocation();
+    
+    // 初始化 index
+    if (index == null) {
+        index = 0;
+        // 调用的是 history api 提供的 replaceState 方法传入 index，这里只是初始化浏览器中保存的 state，没有改变 url
+        globalHistory.replaceState({ ...globalHistory.state, idx: index }, '');
+    }
 
-  return history;
+    //...
+
+    let history: BrowserHistory = {
+        get action() {
+            return action;
+        },
+        get location() {
+            return location;
+        }
+        // ...
+    };
+
+    return history;
 }
 
 ```
@@ -427,52 +427,52 @@ export function createBrowserHistory(
 **createHashHistory**
 ```ts
 export function createHashHistory(
-  options: HashHistoryOptions = {}
+    options: HashHistoryOptions = {}
 ): HashHistory {
-  let { window = document.defaultView! } = options;
-  let globalHistory = window.history;
+    let { window = document.defaultView! } = options;
+    let globalHistory = window.history;
 
- function getIndexAndLocation(): [number, Location] {
-    // 注意这里和 browserHistory 不同了，拿的是 hash，其余逻辑是一样的
-    // parsePath 方法前面有讲到过，解析 url 为 Path 对象
-    let {
-      pathname = '/',
-      search = '',
-      hash = ''
-    } = parsePath(window.location.hash.substr(1));
-    let state = globalHistory.state || {};
-    return [
-      state.idx,
-      readOnly<Location>({
-        pathname,
-        search,
-        hash,
-        state: state.usr || null,
-        key: state.key || 'default'
-      })
-    ];
-  }
-
-  let action = Action.Pop;
-  let [index, location] = getIndexAndLocation();
-
- if (index == null) {
-    index = 0;
-    globalHistory.replaceState({ ...globalHistory.state, idx: index }, '');
-  }
-  //...
-
-  let history: HashHistory = {
-    get action() {
-      return action;
-    },
-    get location() {
-      return location;
+    function getIndexAndLocation(): [number, Location] {
+        // 注意这里和 browserHistory 不同了，拿的是 hash，其余逻辑是一样的
+        // parsePath 方法前面有讲到过，解析 url 为 Path 对象
+        let {
+            pathname = '/',
+            search = '',
+            hash = ''
+        } = parsePath(window.location.hash.substr(1));
+        let state = globalHistory.state || {};
+        return [
+            state.idx,
+            readOnly<Location>({
+                pathname,
+                search,
+                hash,
+                state: state.usr || null,
+                key: state.key || 'default'
+            })
+        ];
     }
-    // ...
-  };
 
-  return history;
+    let action = Action.Pop;
+    let [index, location] = getIndexAndLocation();
+
+    if (index == null) {
+        index = 0;
+        globalHistory.replaceState({ ...globalHistory.state, idx: index }, '');
+    }
+    //...
+
+    let history: HashHistory = {
+        get action() {
+            return action;
+        },
+        get location() {
+            return location;
+        }
+        // ...
+    };
+
+    return history;
 }
 
 ```
@@ -485,23 +485,23 @@ export function createHashHistory(
 ```ts
 function getNextLocation(to: To, state: any = null): Location {
     // 简单的格式化
-  return readOnly<Location>({
-    // 这前面三个实际上是默认值
-    pathname: location.pathname,
-    hash: '',
-    search: '',
-    // 下面胡返回带有 pathname、hash、search 的对象
-    ...(typeof to === 'string' ? parsePath(to) : to),
-    state,
-    key: createKey()
-  });
+    return readOnly<Location>({
+        // 这前面三个实际上是默认值
+        pathname: location.pathname,
+        hash: '',
+        search: '',
+        // 下面胡返回带有 pathname、hash、search 的对象
+        ...(typeof to === 'string' ? parsePath(to) : to),
+        state,
+        key: createKey()
+    });
 }
 /**
 * 调用所有 blockers，没有 blocker 的监听时才会返回 true，否则都是返回 false
 */
 function allowTx(action: Action, location: Location, retry: () => void) {
     return (
-      !blockers.length || (blockers.call({ action, location, retry }), false)
+        !blockers.length || (blockers.call({ action, location, retry }), false)
     );
 }
 
@@ -511,23 +511,23 @@ function allowTx(action: Action, location: Location, retry: () => void) {
 ```ts
 
 type HistoryState = {
-  usr: any;
-  key?: string;
-  idx: number;
+    usr: any;
+    key?: string;
+    idx: number;
 };
 
 function getHistoryStateAndUrl (
-  nextLocation: Location,
-  index: number
+    nextLocation: Location,
+    index: number
 ): [HistoryState, string] {
-  return [
-    {
-      usr: nextLocation.state,
-      key: nextLocation.key,
-      idx: index
-    },
-    createHref(nextLocation)
-  ];
+    return [
+        {
+            usr: nextLocation.state,
+            key: nextLocation.key,
+            idx: index
+        },
+        createHref(nextLocation)
+    ];
 }
 
 function applyTx(nextAction: Action) {
@@ -546,22 +546,22 @@ function push(to: To, state?: any) {
      * 重新执行 push 操作
      */
     function retry() {
-      push(to, state);
+        push(to, state);
     }
 
     // 当没有 block 监听时 allowTx 返回 true，否则都是返回 false，不会推送新的导航
     if (allowTx(nextAction, nextLocation, retry)) {
-      let [historyState, url] = getHistoryStateAndUrl(nextLocation, index + 1);
+        let [historyState, url] = getHistoryStateAndUrl(nextLocation, index + 1);
 
-      // try...catch 是因为 ios 限制最多调用 100 次 pushState 方法，否则会报错
-      try {
-        globalHistory.pushState(historyState, '', url);
-      } catch (error) {
-        // push 失败后就没有 state 了，直接使用 href 跳转
-        window.location.assign(url);
-      }
+        // try...catch 是因为 ios 限制最多调用 100 次 pushState 方法，否则会报错
+        try {
+            globalHistory.pushState(historyState, '', url);
+        } catch (error) {
+            // push 失败后就没有 state 了，直接使用 href 跳转
+            window.location.assign(url);
+        }
 
-      applyTx(nextAction);
+        applyTx(nextAction);
     }
 }
 
@@ -569,16 +569,16 @@ function replace(to: To, state?: any) {
     let nextAction = Action.Replace;
     let nextLocation = getNextLocation(to, state);
     function retry() {
-      replace(to, state);
+        replace(to, state);
     }
 
     // 同 push 函数，否则不会替换新的导航
     if (allowTx(nextAction, nextLocation, retry)) {
-      let [historyState, url] = getHistoryStateAndUrl(nextLocation, index);
+        let [historyState, url] = getHistoryStateAndUrl(nextLocation, index);
 
-      globalHistory.replaceState(historyState, '', url);
+        globalHistory.replaceState(historyState, '', url);
 
-      applyTx(nextAction);
+        applyTx(nextAction);
     }
 }
 
@@ -601,33 +601,33 @@ function applyTx(nextAction: Action, nextLocation: Location) {
 
 
 function push(to: To, state?: any) {
-  let nextAction = Action.Push;
-  let nextLocation = getNextLocation(to, state);
-  function retry() {
-    push(to, state);
-  }
+    let nextAction = Action.Push;
+    let nextLocation = getNextLocation(to, state);
+    function retry() {
+        push(to, state);
+    }
 
-  if (allowTx(nextAction, nextLocation, retry)) {
-    // 修改 index 与 entries 历史栈数组
-    index += 1;
-    // 添加一个新的 location，删除原来 index 往后的栈堆
-    entries.splice(index, entries.length, nextLocation);
-    applyTx(nextAction, nextLocation);
-  }
+    if (allowTx(nextAction, nextLocation, retry)) {
+        // 修改 index 与 entries 历史栈数组
+        index += 1;
+        // 添加一个新的 location，删除原来 index 往后的栈堆
+        entries.splice(index, entries.length, nextLocation);
+        applyTx(nextAction, nextLocation);
+    }
 }
 
 function replace(to: To, state?: any) {
-  let nextAction = Action.Replace;
-  let nextLocation = getNextLocation(to, state);
-  function retry() {
-    replace(to, state);
-  }
+    let nextAction = Action.Replace;
+    let nextLocation = getNextLocation(to, state);
+    function retry() {
+        replace(to, state);
+    }
 
-  if (allowTx(nextAction, nextLocation, retry)) {
-    // 覆盖掉原来的 location
-    entries[index] = nextLocation;
-    applyTx(nextAction, nextLocation);
-  }
+    if (allowTx(nextAction, nextLocation, retry)) {
+        // 覆盖掉原来的 location
+        entries[index] = nextLocation;
+        applyTx(nextAction, nextLocation);
+    }
 }
 
 ```
@@ -642,56 +642,56 @@ const HashChangeEventType = 'hashchange';
 const PopStateEventType = 'popstate';
 
 export function createBrowserHistory(
-  options: BrowserHistoryOptions = {}
+    options: BrowserHistoryOptions = {}
 ): BrowserHistory {
-   //...
+    //...
 
-  let blockedPopTx: Transition | null = null;
-  /**
-   * 事件监听回调函数
-   * 如果设置了 blocker 的监听器，该函数会执行两次，第一次是跳回到原来的页面，第二次是执行 blockers 的所有回调
-   * 这个函数用于监听浏览器的前进后退，因为我们封装的 push 函数已经被我们拦截了
-   */
-  function handlePop() {
-    if (blockedPopTx) {
-      blockers.call(blockedPopTx);
-      blockedPopTx = null;
-    } else {
-      let nextAction = Action.Pop;
-      let [nextIndex, nextLocation] = getIndexAndLocation();
-
-      // 如果有前置钩子
-      if (blockers.length) {
-        if (nextIndex != null) {
-          // 计算跳转层数
-          let delta = index - nextIndex;
-          if (delta) {
-            // Revert the POP
-            blockedPopTx = {
-              action: nextAction,
-              location: nextLocation,
-              // 恢复页面栈，也就是 nextIndex 的页面栈
-              retry() {
-                go(delta * -1);
-              }
-            };
-            // 跳转回去（index 原本的页面栈）
-            go(delta);
-          }
+    let blockedPopTx: Transition | null = null;
+    /**
+     * 事件监听回调函数
+     * 如果设置了 blocker 的监听器，该函数会执行两次，第一次是跳回到原来的页面，第二次是执行 blockers 的所有回调
+     * 这个函数用于监听浏览器的前进后退，因为我们封装的 push 函数已经被我们拦截了
+     */
+    function handlePop() {
+        if (blockedPopTx) {
+            blockers.call(blockedPopTx);
+            blockedPopTx = null;
         } else {
-          // asset
-          // nextIndex 如果为 null 会进入该分支打警告信息，这里就先不管它
-        }
-      } else {
-        // 改变当前 action，调用所有的 listener
-        applyTx(nextAction);
-      }
-    }
-  }
+            let nextAction = Action.Pop;
+            let [nextIndex, nextLocation] = getIndexAndLocation();
 
-  // 可以看到在创建 History 对象的时候就进行监听了
-  window.addEventListener(PopStateEventType, handlePop);
-  //...
+            // 如果有前置钩子
+            if (blockers.length) {
+                if (nextIndex != null) {
+                    // 计算跳转层数
+                    let delta = index - nextIndex;
+                    if (delta) {
+                        // Revert the POP
+                        blockedPopTx = {
+                            action: nextAction,
+                            location: nextLocation,
+                            // 恢复页面栈，也就是 nextIndex 的页面栈
+                            retry() {
+                                go(delta * -1);
+                            }
+                        };
+                        // 跳转回去（index 原本的页面栈）
+                        go(delta);
+                    }
+                } else {
+                // asset
+                // nextIndex 如果为 null 会进入该分支打警告信息，这里就先不管它
+                }
+            } else {
+                // 改变当前 action，调用所有的 listener
+                applyTx(nextAction);
+            }
+        }
+    }
+
+    // 可以看到在创建 History 对象的时候就进行监听了
+    window.addEventListener(PopStateEventType, handlePop);
+    //...
 }
 ```
 
@@ -699,30 +699,30 @@ export function createBrowserHistory(
 ```ts
 
 export function createHashHistory(
-  options: HashHistoryOptions = {}
+    options: HashHistoryOptions = {}
 ): HashHistory {
-   //...
-
-  // 下面和 createBrowserHistory 一样
-  let blockedPopTx: Transition | null = null;
-  function handlePop() {
     //...
-  }
+
+    // 下面和 createBrowserHistory 一样
+    let blockedPopTx: Transition | null = null;
+    function handlePop() {
+        //...
+    }
   
     
-  // 下面额外监听了 hashchange 事件
-  window.addEventListener(PopStateEventType, handlePop);
-  // 低版本兼容，监听 hashchange 事件
-  // https://developer.mozilla.org/de/docs/Web/API/Window/popstate_event
-  window.addEventListener(HashChangeEventType, () => {
-    let [, nextLocation] = getIndexAndLocation();
+    // 下面额外监听了 hashchange 事件
+    window.addEventListener(PopStateEventType, handlePop);
+    // 低版本兼容，监听 hashchange 事件
+    // https://developer.mozilla.org/de/docs/Web/API/Window/popstate_event
+    window.addEventListener(HashChangeEventType, () => {
+        let [, nextLocation] = getIndexAndLocation();
 
-    // 如果支持 popstate 事件这里就会相等，因为会先执行 popstate 的回调
-    if (createPath(nextLocation) !== createPath(location)) {
-      handlePop();
-    }
-  });
-  //...
+        // 如果支持 popstate 事件这里就会相等，因为会先执行 popstate 的回调
+        if (createPath(nextLocation) !== createPath(location)) {
+            handlePop();
+        }
+    });
+    //...
 }
 
 ```
@@ -921,37 +921,37 @@ export interface MemoryRouterProps {
  * react-router 里面只有 MemoryRouter，其余的 router 在 react-router-dom 里
  */
 export function MemoryRouter({
-  basename,
-  children,
-  initialEntries,
-  initialIndex
+    basename,
+    children,
+    initialEntries,
+    initialIndex
 }: MemoryRouterProps): React.ReactElement {
-  // history 对象的引用
-  let historyRef = React.useRef<MemoryHistory>();
-  if (historyRef.current == null) {
-    // 创建 memoryHistory
-    historyRef.current = createMemoryHistory({ initialEntries, initialIndex });
-  }
+    // history 对象的引用
+    let historyRef = React.useRef<MemoryHistory>();
+    if (historyRef.current == null) {
+        // 创建 memoryHistory
+        historyRef.current = createMemoryHistory({ initialEntries, initialIndex });
+    }
 
-  let history = historyRef.current;
-  let [state, setState] = React.useState({
-    action: history.action,
-    location: history.location
-  });
+    let history = historyRef.current;
+    let [state, setState] = React.useState({
+        action: history.action,
+        location: history.location
+    });
 
-  // 监听 history 改变，改变后重新 setState
-  React.useLayoutEffect(() => history.listen(setState), [history]);
+    // 监听 history 改变，改变后重新 setState
+    React.useLayoutEffect(() => history.listen(setState), [history]);
 
-  // 简单的初始化并将相应状态与 React 绑定
-  return (
-    <Router
-      basename={basename}
-      children={children}
-      location={state.location}
-      navigationType={state.action}
-      navigator={history}
-    />
-  );
+    // 简单的初始化并将相应状态与 React 绑定
+    return (
+        <Router
+            basename={basename}
+            children={children}
+            location={state.location}
+            navigationType={state.action}
+            navigator={history}
+        />
+    );
 }
 
 
@@ -1034,14 +1034,14 @@ export interface IndexRouteProps {
  * Route 组件内部没有进行任何操作，仅仅只是定义 props，而我们就是为了使用它的 props
  */
 export function Route(
-  _props: PathRouteProps | LayoutRouteProps | IndexRouteProps
+    _props: PathRouteProps | LayoutRouteProps | IndexRouteProps
 ): React.ReactElement | null {
-  // 这里可以看出 Route 不能够被渲染出来，渲染会直接抛出错误，证明 Router 拿到 Route 后也不会在内部操作
-  invariant(
-    false,
-    `A <Route> is only ever to be used as the child of <Routes> element, ` +
-      `never rendered directly. Please wrap your <Route> in a <Routes>.`
-  );
+    // 这里可以看出 Route 不能够被渲染出来，渲染会直接抛出错误，证明 Router 拿到 Route 后也不会在内部操作
+    invariant(
+        false,
+        `A <Route> is only ever to be used as the child of <Routes> element, ` +
+        `never rendered directly. Please wrap your <Route> in a <Routes>.`
+    );
 }
 
 ```
@@ -1052,19 +1052,19 @@ export function Route(
 
 ```ts
 export interface RoutesProps {
-  children?: React.ReactNode;
-  // 用户传入的 location 对象，一般不传，默认用当前浏览器的 location
-  location?: Partial<Location> | string;
+    children?: React.ReactNode;
+    // 用户传入的 location 对象，一般不传，默认用当前浏览器的 location
+    location?: Partial<Location> | string;
 }
 
 /**
  * 所有的 Route 都需要 Routes 包裹，用于渲染 Route（拿到 Route 的 props 的值，不渲染真实的 DOM 节点）
  */
 export function Routes({
-  children,
-  location
+    children,
+    location
 }: RoutesProps): React.ReactElement | null {
-  return useRoutes(createRoutesFromChildren(children), location);
+    return useRoutes(createRoutesFromChildren(children), location);
 }
 
 ```
@@ -1075,67 +1075,67 @@ export function Routes({
 ```tsx
 // 路由配置对象
 export interface RouteObject {
-  // 路由 path 是否匹配大小写
-  caseSensitive?: boolean;
-  // 子路由
-  children?: RouteObject[];
-  // 要渲染的组件
-  element?: React.ReactNode;
-  // 是否是索引路由
-  index?: boolean;
-  path?: string;
+    // 路由 path 是否匹配大小写
+    caseSensitive?: boolean;
+    // 子路由
+    children?: RouteObject[];
+    // 要渲染的组件
+    element?: React.ReactNode;
+    // 是否是索引路由
+    index?: boolean;
+    path?: string;
 }
 
 /**
  * 将 Route 组件转换为 route 对象，提供给 useRoutes 使用
  */
 export function createRoutesFromChildren(
-  children: React.ReactNode
+    children: React.ReactNode
 ): RouteObject[] {
-  let routes: RouteObject[] = [];
+    let routes: RouteObject[] = [];
 
-  // 内部逻辑很简单，就是递归遍历 children，获取 <Route /> props 上的所有信息，然后格式化后推入 routes 数组中
-  React.Children.forEach(children, element => {
-    if (!React.isValidElement(element)) {
-      // Ignore non-elements. This allows people to more easily inline
-      // conditionals in their route config.
-      return;
-    }
+    // 内部逻辑很简单，就是递归遍历 children，获取 <Route /> props 上的所有信息，然后格式化后推入 routes 数组中
+    React.Children.forEach(children, element => {
+        if (!React.isValidElement(element)) {
+            // Ignore non-elements. This allows people to more easily inline
+            // conditionals in their route config.
+            return;
+        }
 
-    // 空节点，忽略掉继续往下遍历
-    if (element.type === React.Fragment) {
-      // Transparently support React.Fragment and its children.
-      routes.push.apply(
-        routes,
-        createRoutesFromChildren(element.props.children)
-      );
-      return;
-    }
+        // 空节点，忽略掉继续往下遍历
+        if (element.type === React.Fragment) {
+            // Transparently support React.Fragment and its children.
+            routes.push.apply(
+                routes,
+                createRoutesFromChildren(element.props.children)
+            );
+            return;
+        }
 
-    // 不要传入其它组件，只能传 Route
-    invariant(
-      element.type === Route,
-      `[${
-        typeof element.type === "string" ? element.type : element.type.name
-      }] is not a <Route> component. All component children of <Routes> must be a <Route> or <React.Fragment>`
-    );
+        // 不要传入其它组件，只能传 Route
+        invariant(
+            element.type === Route,
+            `[${
+                typeof element.type === "string" ? element.type : element.type.name
+            }] is not a <Route> component. All component children of <Routes> must be a <Route> or <React.Fragment>`
+        );
 
-    let route: RouteObject = {
-      caseSensitive: element.props.caseSensitive,
-      element: element.props.element,
-      index: element.props.index,
-      path: element.props.path
-    };
+        let route: RouteObject = {
+            caseSensitive: element.props.caseSensitive,
+            element: element.props.element,
+            index: element.props.index,
+            path: element.props.path
+        };
 
-    // 递归
-    if (element.props.children) {
-      route.children = createRoutesFromChildren(element.props.children);
-    }
+        // 递归
+        if (element.props.children) {
+            route.children = createRoutesFromChildren(element.props.children);
+        }
 
-    routes.push(route);
-  });
+        routes.push(route);
+    });
 
-  return routes;
+    return routes;
 }
 
 ```
@@ -1154,22 +1154,22 @@ import { useRoutes } from "react-router-dom";
 
 // 此时 App 返回的就是已经渲染好的路由元素了
 function App() {
-  let element = useRoutes([
-    {
-      path: "/",
-      element: <Dashboard />,
-      children: [
+    let element = useRoutes([
         {
-          path: "/messages",
-          element: <DashboardMessages />
+            path: "/",
+            element: <Dashboard />,
+            children: [
+                {
+                    path: "/messages",
+                    element: <DashboardMessages />
+                },
+                { path: "/tasks", element: <DashboardTasks /> }
+            ]
         },
-        { path: "/tasks", element: <DashboardTasks /> }
-      ]
-    },
-    { path: "/team", element: <AboutPage /> }
-  ]);
+        { path: "/team", element: <AboutPage /> }
+    ]);
 
-  return element;
+    return element;
 }
 
 ```

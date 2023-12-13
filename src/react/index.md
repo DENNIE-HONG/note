@@ -195,7 +195,7 @@ export function createFiberRoot(
 
 ```
 
-beginWork: 这个函数正真走我们的jsx代码，也就是上面讲解的链表之间如何连接的部分。
+beginWork: 这个函数真正走我们的jsx代码，也就是上面讲解的链表之间如何连接的部分。
 
 ```js
 function beginWork(fiber: Fiber): Fiber | undefined {
@@ -354,7 +354,7 @@ graph TB
 * 发出重复的异步网络请求, 导致 IO 资源被浪费
 
 #### getDerivedStateFromProps
-getDerivedStateFromProps 首先它是 静态 方法, 方法参数分别下一个 props、上一个 state, 这个生命周期函数是为了替代 componentWillReceiveProps 而存在的, 主要作用就是监听 props 然后修改当前组件的 state
+getDerivedStateFromProps 首先它是**静态方法**, 方法参数分别下一个 props、上一个 state, 这个生命周期函数是为了替代 componentWillReceiveProps 而存在的, 主要作用就是监听 props 然后修改当前组件的 state
 
 #### getSnapshotBeforeUpdate
 getSnapshotBeforeUpdate 生命周期将在 render 之后 DOM 变更之前被调用, 此生命周期的返回值将作为 componentDidUpdate 的第三个参数进行传递, 当然通常不需要此生命周期, 但在重新渲染期间需要手动保留 DOM 信息时就特别有用
@@ -475,7 +475,9 @@ export function enqueueUpdate<State>(fiber: Fiber, update: Update<State>) {
         pending.next = update;
     }
     sharedQueue.pending = update;
-
+    if (__DEV__) {
+        ...
+    }
 }
 ```
 
@@ -593,7 +595,7 @@ ReactComponent.prototype.setState = function() {
                —————————————————————————————————
                             ↓                     |————ReactDomEmptyComponent
              __________________________________   |————ReactDomComponent            ______________________________
-            |根据<A />类型，内部封装为四大类型组件|——|————ReactCompositeComponent  -->| 解析ReactElement对对象获得HTML |
+            |根据<A />类型，内部封装为四大类型组件|—---—|————ReactCompositeComponent  -->| 解析ReactElement对对象获得HTML |
              ——————————————————————————————————   |___ReactTextComponent            ——————————————————————————————
                                                                                                 ↓
                                                                                         ___________________
@@ -916,7 +918,7 @@ function reconcileSingleElement(
         }
         child = child.sibling;
     }
-    // 创建新Fiber，并返回
+    // 走到这说明，不能复用，创建新Fiber，并返回
     // 根据element创建fiber
     let fiber;
     if (element.type === REACT_FRAGMENT_TYPE) {
@@ -952,6 +954,7 @@ function reconcileSingleTextNode(
         deleteChild(returnFiber, currentFiber);
         currentFiber = currentFiber.sibling;
     }
+    // 走到这说明，旧的没有节点可以服用，创建新Fiber，并返回
     const fiber = new FiberNode(HostText, { content }, null);
     fiber.return = returnFiber;
     return fiber;
@@ -1088,7 +1091,7 @@ function reconcileChildrenArray(
         current = current.sibling;
     }
     // 2.遍历newChild，寻找是否可复用
-    for (let i = 0; i < newChild.length; i++) {      
+    for (let i = 0; i < newChild.length; i++) {
         const after = newChild[i];
         const newFiber = updateFromMap(returnFiber, existingChildren, i, after);
 
@@ -1394,7 +1397,7 @@ const SimpleEventPlugin = {
 ```
 
 **registrationNameDependencies**
-gistrationNameDependencies用来记录，合成事件比如 onClick 和原生事件 click对应关系。比如 onChange 对应 change , input , keydown , keyup事件。
+registrationNameDependencies用来记录，合成事件比如 onClick 和原生事件 click对应关系。比如 onChange 对应 change , input , keydown , keyup事件。
 
 ```js
 {
@@ -1413,11 +1416,11 @@ gistrationNameDependencies用来记录，合成事件比如 onClick 和原生事
 
 ```js
 /* 注册事件插件 */
-export function injectEventPluginsByName(injectedNamesToPlugins){
-     for (const pluginName in injectedNamesToPlugins) {
-         namesToPlugins[pluginName] = injectedNamesToPlugins[pluginName]
-     }
-     recomputePluginOrdering()
+export function injectEventPluginsByName(injectedNamesToPlugins) {
+    for (const pluginName in injectedNamesToPlugins) {
+        namesToPlugins[pluginName] = injectedNamesToPlugins[pluginName]
+    }
+    recomputePluginOrdering()
 }
 
 ```
@@ -1504,7 +1507,7 @@ function diffProperties(){
     /* 判断当前的 propKey 是不是 React合成事件 */
     if(registrationNameModules.hasOwnProperty(propKey)){
          /* 这里多个函数简化了，如果是合成事件， 传入成事件名称 onClick ，向document注册事件  */
-         legacyListenToEvent(registrationName, document）;
+        legacyListenToEvent(registrationName, document）;
     }
 }
 
@@ -1518,10 +1521,10 @@ diffProperties函数在 diff props 如果发现是合成事件(onClick) 就会�
 function legacyListenToEvent(registrationName，mountAt){
    const dependencies = registrationNameDependencies[registrationName]; // 根据 onClick 获取  onClick 依赖的事件数组 [ 'click' ]。
     for (let i = 0; i < dependencies.length; i++) {
-    const dependency = dependencies[i];
-    //这个经过多个函数简化，如果是 click 基础事件，会走 legacyTrapBubbledEvent ,而且都是按照冒泡处理
-     legacyTrapBubbledEvent(dependency, mountAt);
-  }
+        const dependency = dependencies[i];
+        //这个经过多个函数简化，如果是 click 基础事件，会走 legacyTrapBubbledEvent ,而且都是按照冒泡处理
+        legacyTrapBubbledEvent(dependency, mountAt);
+    }
 }
 
 ```
@@ -1577,14 +1580,14 @@ function dispatchEvent(topLevelType,eventSystemFlags,targetContainer,nativeEvent
 ```
 ```js
 /*
-topLevelType -> click
-eventSystemFlags -> 1
-targetContainer -> document
-nativeEvent -> 原生事件的 event 对象
+* topLevelType -> click
+* eventSystemFlags -> 1
+* targetContainer -> document
+* nativeEvent -> 原生事件的 event 对象
 */
 function attemptToDispatchEvent(topLevelType,eventSystemFlags,targetContainer,nativeEvent){
     /* 获取原生事件 e.target */
-    const nativeEventTarget = getEventTarget(nativeEvent)
+    const nativeEventTarget = getEventTarget(nativeEvent);
     /* 获取当前事件，最近的dom类型fiber ，我们 demo中 button 按钮对应的 fiber */
     let targetInst = getClosestInstanceFromNode(nativeEventTarget); 
     /* 重要：进入legacy模式的事件处理系统 */
@@ -1636,8 +1639,8 @@ export function batchedEventUpdates(fn,a){
 // targetInst - button Fiber
 // nativeEvent
 function handleTopLevel(bookKeeping){
-    const { topLevelType,targetInst,nativeEvent,eventTarget, eventSystemFlags} = bookKeeping
-    for(let i=0; i < plugins.length;i++ ){
+    const {topLevelType, targetInst, nativeEvent, eventTarget, eventSystemFlags} = bookKeeping;
+    for(let i = 0; i < plugins.length; i++){
         const possiblePlugin = plugins[i];
         /* 找到对应的事件插件，形成对应的合成event，形成事件执行队列  */
         const extractedEvents = possiblePlugin.extractEvents(topLevelType,targetInst,nativeEvent,eventTarget,eventSystemFlags)  

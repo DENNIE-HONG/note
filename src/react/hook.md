@@ -18,7 +18,7 @@ Hook 是 React 16.8 的新增特性。它可以让你在不编写 class 的情�
 
 
 ## react-hook原理：
-* 函数组件爱你执行renderWithHooks
+* 函数组件执行renderWithHooks
 * 初始化hooks
     * mountWorkInProgressHook生成hooks链表
     * mountState初始化useState
@@ -271,11 +271,13 @@ A: 因为一旦在条件语句中声明hooks，在下一次函数组件更新，
 
 ```js
 function mountState(initialState) {
+    // 形成链表结构，最后一个是空hook
     const hook = mountWorkInProgressHook();
     if (typeof initialState === 'function') {
         // 如果 useState 第一个参数为函数，执行函数得到state
         initialState = initialState();
     }
+    // 最后一个hook设置数据
     hook.memoziedState = hook.baseState = initialState;
     const queue = (hook.queue = {
         padding: null, // 带更新的
@@ -300,7 +302,7 @@ function dispatchAction(fiber, queue, action) {
 
     // 计算 expirationTime 过程略过。
     /* 创建一个update */
-    const update= {
+    const update = {
         expirationTime,
         suspenseConfig,
         action,
@@ -351,7 +353,7 @@ function dispatchAction(fiber, queue, action) {
 
 ```mermaid
 flowchart TB
-    新建update对象 --> update对象放入pending队列 --> r{组件的fiber是否正在渲染} --是--> 跟新update对象的expirationTime
+    新建update对象 --> update对象放入pending队列 --> r{组件的fiber是否正在渲染} --是--> 更新update对象的expirationTime
     
     r--否--> A[获取最新的state，和上一次的state] --> compare[浅比较，相等吗] --否--> 调用scheduleUpdateOnFiber调度渲染当前fiber
     
@@ -365,8 +367,10 @@ function mountEffect(
   create,
   deps,
 ) {
+    // 链表结构最后一个加入空hook 
     const hook = mountWorkInProgressHook();
     const nextDeps = deps === undefined ? null : deps;
+    // 新hook设置值
     hook.memoizedState = pushEffect(
         HookHasEffect | hookEffectTag, 
         create, // useEffect 第一次参数，就是副作用函数
@@ -442,12 +446,14 @@ flowchart LR
 #### useMemo -> mountMemo
 
 ```js
-function mountMemo(nextCreate,deps){
-  const hook = mountWorkInProgressHook();
-  const nextDeps = deps === undefined ? null : deps;
-  const nextValue = nextCreate();
-  hook.memoizedState = [nextValue, nextDeps];
-  return nextValue;
+function mountMemo(nextCreate,deps) {
+    // 链表后加入一个hook
+    const hook = mountWorkInProgressHook();
+    const nextDeps = deps === undefined ? null : deps;
+    const nextValue = nextCreate();
+    // 保存值和deps
+    hook.memoizedState = [nextValue, nextDeps];
+    return nextValue;
 }
 
 
@@ -458,10 +464,12 @@ function mountMemo(nextCreate,deps){
 
 ```js
 function mountRef(initialValue) {
-  const hook = mountWorkInProgressHook();
-  const ref = {current: initialValue};
-  hook.memoizedState = ref;
-  return ref;
+    // 链表后创建一个hook
+    const hook = mountWorkInProgressHook();
+    const ref = {current: initialValue};
+    // 新hook上挂载值
+    hook.memoizedState = ref;
+    return ref;
 }
 
 ```
@@ -512,7 +520,7 @@ function updateWorkInProgressHook() {
         currentHook = nextCurrentHook;
     } else {
         currentHook = nextCurrentHook;
-        // 创建新hook
+        // 创建新hook，值都复制过来
         const newHook = {
             memoziedState: currentHook.memoziedState,
             baseState: currentHook.baseState,
@@ -545,64 +553,66 @@ flowchart TB
 
 ```js
 function updateReducer(
-  reducer,
-  initialArg,
-  init,
-){
-  const hook = updateWorkInProgressHook();
-  const queue = hook.queue;
-  queue.lastRenderedReducer = reducer;
-  const current = currentHook;
-  let baseQueue = current.baseQueue;
-  const pendingQueue = queue.pending;
-  if (pendingQueue !== null) {
-     // 这里省略... 第一步：将 pending  queue 合并到 basequeue
-  }
-  if (baseQueue !== null) {
-    const first = baseQueue.next;
-    let newState = current.baseState;
-    let newBaseState = null;
-    let newBaseQueueFirst = null;
-    let newBaseQueueLast = null;
-    let update = first;
-    do {
-      const updateExpirationTime = update.expirationTime;
-      if (updateExpirationTime < renderExpirationTime) { //优先级不足
-        const clone  = {
-          expirationTime: update.expirationTime,
-          ...
-        };
-        if (newBaseQueueLast === null) {
-          newBaseQueueFirst = newBaseQueueLast = clone;
-          newBaseState = newState;
-        } else {
-          newBaseQueueLast = newBaseQueueLast.next = clone;
-        }
-      } else {  //此更新确实具有足够的优先级。
-        if (newBaseQueueLast !== null) {
-          const clone= {
-            expirationTime: Sync, 
-             ...
-          };
-          newBaseQueueLast = newBaseQueueLast.next = clone;
-        }
-        /* 得到新的 state */
-        newState = reducer(newState, action);
-      }
-      update = update.next;
-    } while (update !== null && update !== first);
-    if (newBaseQueueLast === null) {
-      newBaseState = newState;
-    } else {
-      newBaseQueueLast.next = newBaseQueueFirst;
+    reducer,
+    initialArg,
+    init,
+) {
+    // 新hook，值从currentHooks中复制过来
+    const hook = updateWorkInProgressHook();
+    const queue = hook.queue;
+    queue.lastRenderedReducer = reducer;
+    const current = currentHook;
+    let baseQueue = current.baseQueue;
+    const pendingQueue = queue.pending;
+    if (pendingQueue !== null) {
+        // 这里省略... 第一步：将 pending  queue 合并到 basequeue
     }
-    hook.memoizedState = newState;
-    hook.baseState = newBaseState;
-    hook.baseQueue = newBaseQueueLast;
-    queue.lastRenderedState = newState;
-  }
-  const dispatch = queue.dispatch
-  return [hook.memoizedState, dispatch];
+    if (baseQueue !== null) {
+        const first = baseQueue.next;
+        let newState = current.baseState;
+        let newBaseState = null;
+        let newBaseQueueFirst = null;
+        let newBaseQueueLast = null;
+        let update = first;
+        do {
+        const updateExpirationTime = update.expirationTime;
+        if (updateExpirationTime < renderExpirationTime) { //优先级不足
+            const clone  = {
+            expirationTime: update.expirationTime,
+            ...
+            };
+            if (newBaseQueueLast === null) {
+            newBaseQueueFirst = newBaseQueueLast = clone;
+            newBaseState = newState;
+            } else {
+            newBaseQueueLast = newBaseQueueLast.next = clone;
+            }
+        } else {  //此更新确实具有足够的优先级。
+            if (newBaseQueueLast !== null) {
+                const clone= {
+                    expirationTime: Sync, 
+                    ...
+                };
+                newBaseQueueLast = newBaseQueueLast.next = clone;
+            }
+            /* 得到新的 state */
+            newState = reducer(newState, action);
+        }
+        update = update.next;
+    } 
+    while (update !== null && update !== first);
+        if (newBaseQueueLast === null) {
+            newBaseState = newState;
+        } else {
+            newBaseQueueLast.next = newBaseQueueFirst;
+        }
+        hook.memoizedState = newState;
+        hook.baseState = newBaseState;
+        hook.baseQueue = newBaseQueueLast;
+        queue.lastRenderedState = newState;
+    }
+    const dispatch = queue.dispatch
+    return [hook.memoizedState, dispatch];
 }
 
 ```
@@ -612,27 +622,29 @@ function updateReducer(
 
 ```js
 function updateEffect(create, deps): void {
-  const hook = updateWorkInProgressHook();
-  const nextDeps = deps === undefined ? null : deps;
-  let destroy = undefined;
-  if (currentHook !== null) {
-    const prevEffect = currentHook.memoizedState;
-    destroy = prevEffect.destroy;
-    if (nextDeps !== null) {
-      const prevDeps = prevEffect.deps;
-      if (areHookInputsEqual(nextDeps, prevDeps)) {
-        pushEffect(hookEffectTag, create, destroy, nextDeps);
-        return;
-      }
+    // 从老的currentHooks中复制过来
+    const hook = updateWorkInProgressHook();
+    const nextDeps = deps === undefined ? null : deps;
+    let destroy = undefined;
+    if (currentHook !== null) {
+        const prevEffect = currentHook.memoizedState;
+        destroy = prevEffect.destroy;
+        if (nextDeps !== null) {
+            const prevDeps = prevEffect.deps;
+            if (areHookInputsEqual(nextDeps, prevDeps)) {
+                pushEffect(hookEffectTag, create, destroy, nextDeps);
+                return;
+            }
+        }
     }
-  }
-  currentlyRenderingFiber.effectTag |= fiberEffectTag
-  hook.memoizedState = pushEffect(
-    HookHasEffect | hookEffectTag,
-    create,
-    destroy,
-    nextDeps,
-  );
+    currentlyRenderingFiber.effectTag |= fiberEffectTag;
+    // 更新hook的值
+    hook.memoizedState = pushEffect(
+        HookHasEffect | hookEffectTag,
+        create,
+        destroy,
+        nextDeps,
+    );
 }
 
 ```
@@ -644,23 +656,25 @@ useEffect 做的事很简单，判断两次deps 相等，如果相等说明此�
 ```js
 
 function updateMemo(
-  nextCreate,
-  deps,
+    nextCreate,
+    deps,
 ) {
-  const hook = updateWorkInProgressHook();
-  const nextDeps = deps === undefined ? null : deps; // 新的 deps 值
-  const prevState = hook.memoizedState; 
-  if (prevState !== null) {
-    if (nextDeps !== null) {
-      const prevDeps = prevState[1]; // 之前保存的 deps 值
-      if (areHookInputsEqual(nextDeps, prevDeps)) { //判断两次 deps 值
-        return prevState[0];
-      }
+    // 从老的currentHooks中复制过来
+    const hook = updateWorkInProgressHook();
+    const nextDeps = deps === undefined ? null : deps; // 新的 deps 值
+    const prevState = hook.memoizedState; 
+    if (prevState !== null) {
+        if (nextDeps !== null) {
+            const prevDeps = prevState[1]; // 之前保存的 deps 值
+            if (areHookInputsEqual(nextDeps, prevDeps)) { //判断两次 deps 值
+                return prevState[0];
+            }
+        }
     }
-  }
-  const nextValue = nextCreate();
-  hook.memoizedState = [nextValue, nextDeps];
-  return nextValue;
+    const nextValue = nextCreate();
+    // 更新 新hook的保存的值
+    hook.memoizedState = [nextValue, nextDeps];
+    return nextValue;
 }
 
 ```
@@ -671,8 +685,8 @@ function updateMemo(
 
 ```js
 function updateRef(initialValue){
-  const hook = updateWorkInProgressHook()
-  return hook.memoizedState
+    const hook = updateWorkInProgressHook();
+    return hook.memoizedState;
 }
 
 ```
