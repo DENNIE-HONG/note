@@ -1183,39 +1183,39 @@ function App() {
  * 动态参数的定义
  */
 export type Params<Key extends string = string> = {
-  readonly [key in Key]: string | undefined;
+    readonly [key in Key]: string | undefined;
 };
 
 export interface RouteMatch<ParamKey extends string = string> {
-  // params 参数，比如 :id 等
-  params: Params<ParamKey>;
-  // 匹配到的 pathname
-  pathname: string;
-  /**
-   * 子路由匹配之前的路径 url，这里可以把它看做是只要以 /* 结尾路径（这是父路由的路径）中 /* 之前的部分
-   */
-  pathnameBase: string;
-  // 定义的路由对象
-  route: RouteObject;
+    // params 参数，比如 :id 等
+    params: Params<ParamKey>;
+    // 匹配到的 pathname
+    pathname: string;
+    /**
+     * 子路由匹配之前的路径 url，这里可以把它看做是只要以 /* 结尾路径（这是父路由的路径）中 /* 之前的部分
+     */
+    pathnameBase: string;
+    // 定义的路由对象
+    route: RouteObject;
 }
 
 interface RouteContextObject {
-  // 一个 ReactElement，内部包含有所有子路由组成的聚合组件，其实 Outlet 组件内部就是它
-  outlet: React.ReactElement | null;
-  // 一个成功匹配到的路由数组，索引从小到大层级依次变深
-  matches: RouteMatch[];
+    // 一个 ReactElement，内部包含有所有子路由组成的聚合组件，其实 Outlet 组件内部就是它
+    outlet: React.ReactElement | null;
+    // 一个成功匹配到的路由数组，索引从小到大层级依次变深
+    matches: RouteMatch[];
 }
 /**
  * 包含全部匹配到的路由，官方不推荐在外直接使用
  */
 const RouteContext = React.createContext<RouteContextObject>({
-  outlet: null,
-  matches: []
+    outlet: null,
+    matches: []
 });
 
 /** @internal */
 export {
-  RouteContext as UNSAFE_RouteContext
+    RouteContext as UNSAFE_RouteContext
 };
 
 ```
@@ -1234,84 +1234,84 @@ export {
  * 3.内部通过计算所有的 routes 与当前的 location 关系，经过路径权重计算，得到 matches 数组，然后将 matches 数组重新渲染为嵌套结构的组件
  */
 export function useRoutes(
-  routes: RouteObject[],
-  locationArg?: Partial<Location> | string
+    routes: RouteObject[],
+    locationArg?: Partial<Location> | string
 ): React.ReactElement | null {
-  // useRoutes 必须最外层有 Router 包裹，不然报错
-  invariant(
-    useInRouterContext(),
-    // TODO: This error is probably because they somehow have 2 versions of the
-    // router loaded. We can help them understand how to avoid that.
-    `useRoutes() may be used only in the context of a <Router> component.`
-  );
-
-  // 1.当此 useRoutes 为第一层级的路由定义时，matches 为空数组（默认值）
-  // 2.当该 hooks 在一个已经调用了 useRoutes 的渲染环境中渲染时，matches 含有值（也就是有 Routes 的上下文环境嵌套）
-  let { matches: parentMatches } = React.useContext(RouteContext);
-  // 最后 match 到的 route（深度最深），该 route 将作为父 route，我们后续的 routes 都是其子级
-  let routeMatch = parentMatches[parentMatches.length - 1];
-  // 下面是父级 route 的参数，我们会基于以下参数操作，如果项目中只在一个地方调用了 useRoutes，一般都会是默认值
-  let parentParams = routeMatch ? routeMatch.params : {};
-  // 父路由的完整 pathname，比如路由设置为 /foo/*，当前导航是 /foo/1，那么 parentPathname 就是 /foo/1
-  let parentPathname = routeMatch ? routeMatch.pathname : "/";
-  // 同上面的 parentPathname，不过是 /* 前的部分，也就是 /foo
-  let parentPathnameBase = routeMatch ? routeMatch.pathnameBase : "/";
-  let parentRoute = routeMatch && routeMatch.route;
-  // 获取上下文环境中的 location
-  let locationFromContext = useLocation();
-
-  // 判断是否手动传入了 location，否则用默认上下文的 location
-  let location;
-  if (locationArg) {
-    // 格式化为 Path 对象
-    let parsedLocationArg =
-      typeof locationArg === "string" ? parsePath(locationArg) : locationArg;
-    // 如果传入了 location，判断是否与父级路由匹配（作为子路由存在）
+    // useRoutes 必须最外层有 Router 包裹，不然报错
     invariant(
-      parentPathnameBase === "/" ||
-        parsedLocationArg.pathname?.startsWith(parentPathnameBase),
-      `When overriding the location using \`<Routes location>\` or \`useRoutes(routes, location)\`, ` +
-        `the location pathname must begin with the portion of the URL pathname that was ` +
-        `matched by all parent routes. The current pathname base is "${parentPathnameBase}" ` +
-        `but pathname "${parsedLocationArg.pathname}" was given in the \`location\` prop.`
+        useInRouterContext(),
+        // TODO: This error is probably because they somehow have 2 versions of the
+        // router loaded. We can help them understand how to avoid that.
+        `useRoutes() may be used only in the context of a <Router> component.`
     );
 
-    location = parsedLocationArg;
-  } else {
-    location = locationFromContext;
-  }
+    // 1.当此 useRoutes 为第一层级的路由定义时，matches 为空数组（默认值）
+    // 2.当该 hooks 在一个已经调用了 useRoutes 的渲染环境中渲染时，matches 含有值（也就是有 Routes 的上下文环境嵌套）
+    let { matches: parentMatches } = React.useContext(RouteContext);
+    // 最后 match 到的 route（深度最深），该 route 将作为父 route，我们后续的 routes 都是其子级
+    let routeMatch = parentMatches[parentMatches.length - 1];
+    // 下面是父级 route 的参数，我们会基于以下参数操作，如果项目中只在一个地方调用了 useRoutes，一般都会是默认值
+    let parentParams = routeMatch ? routeMatch.params : {};
+    // 父路由的完整 pathname，比如路由设置为 /foo/*，当前导航是 /foo/1，那么 parentPathname 就是 /foo/1
+    let parentPathname = routeMatch ? routeMatch.pathname : "/";
+    // 同上面的 parentPathname，不过是 /* 前的部分，也就是 /foo
+    let parentPathnameBase = routeMatch ? routeMatch.pathnameBase : "/";
+    let parentRoute = routeMatch && routeMatch.route;
+    // 获取上下文环境中的 location
+    let locationFromContext = useLocation();
 
-  let pathname = location.pathname || "/";
-  // 剩余的 pathname，整体 pathname 减掉父级已经匹配的 pathname，才是本次 routes 要匹配的 pathname（适用于 parentMatches 匹配不为空的情况）
-  let remainingPathname =
-    parentPathnameBase === "/"
-      ? pathname
-      : pathname.slice(parentPathnameBase.length) || "/";
-  // 匹配当前路径，注意是移除了 parentPathname 的相关路径后的匹配
-  
-  // 通过传入的 routes 配置项与当前的路径，匹配对应渲染的路由
-  let matches = matchRoutes(routes, { pathname: remainingPathname });
+    // 判断是否手动传入了 location，否则用默认上下文的 location
+    let location;
+    if (locationArg) {
+        // 格式化为 Path 对象
+        let parsedLocationArg =
+        typeof locationArg === "string" ? parsePath(locationArg) : locationArg;
+        // 如果传入了 location，判断是否与父级路由匹配（作为子路由存在）
+        invariant(
+            parentPathnameBase === "/" ||
+                parsedLocationArg.pathname?.startsWith(parentPathnameBase),
+            `When overriding the location using \`<Routes location>\` or \`useRoutes(routes, location)\`, ` +
+                `the location pathname must begin with the portion of the URL pathname that was ` +
+                `matched by all parent routes. The current pathname base is "${parentPathnameBase}" ` +
+                `but pathname "${parsedLocationArg.pathname}" was given in the \`location\` prop.`
+        );
 
-  // 参数为当前匹配到的 matches 路由数组和外层 useRoutes 的 matches 路由数组
-  // 返回的是 React.Element，渲染所有的 matches 对象
-  return _renderMatches(
-    // 没有 matches 会返回 null
-    matches &&
-      matches.map(match =>
-        // 合并外层调用 useRoutes 得到的参数，内部的 Route 会有外层 Route（其实这也叫父 Route） 的所有匹配属性。
-        Object.assign({}, match, {
-          params: Object.assign({}, parentParams, match.params),
-          // joinPaths 函数用于合并字符串
-          pathname: joinPaths([parentPathnameBase, match.pathname]),
-          pathnameBase:
-            match.pathnameBase === "/"
-              ? parentPathnameBase
-              : joinPaths([parentPathnameBase, match.pathnameBase])
-        })
-      ),
-    // 外层 parentMatches 部分，最后会一起加入最终 matches 参数中
-    parentMatches
-  );
+        location = parsedLocationArg;
+    } else {
+        location = locationFromContext;
+    }
+
+    let pathname = location.pathname || "/";
+    // 剩余的 pathname，整体 pathname 减掉父级已经匹配的 pathname，才是本次 routes 要匹配的 pathname（适用于 parentMatches 匹配不为空的情况）
+    let remainingPathname =
+        parentPathnameBase === "/"
+        ? pathname
+        : pathname.slice(parentPathnameBase.length) || "/";
+    // 匹配当前路径，注意是移除了 parentPathname 的相关路径后的匹配
+    
+    // 通过传入的 routes 配置项与当前的路径，匹配对应渲染的路由
+    let matches = matchRoutes(routes, { pathname: remainingPathname });
+
+    // 参数为当前匹配到的 matches 路由数组和外层 useRoutes 的 matches 路由数组
+    // 返回的是 React.Element，渲染所有的 matches 对象
+    return _renderMatches(
+        // 没有 matches 会返回 null
+        matches &&
+        matches.map(match =>
+            // 合并外层调用 useRoutes 得到的参数，内部的 Route 会有外层 Route（其实这也叫父 Route） 的所有匹配属性。
+            Object.assign({}, match, {
+            params: Object.assign({}, parentParams, match.params),
+            // joinPaths 函数用于合并字符串
+            pathname: joinPaths([parentPathnameBase, match.pathname]),
+            pathnameBase:
+                match.pathnameBase === "/"
+                ? parentPathnameBase
+                : joinPaths([parentPathnameBase, match.pathnameBase])
+            })
+        ),
+        // 外层 parentMatches 部分，最后会一起加入最终 matches 参数中
+        parentMatches
+    );
 }
 
 /**
@@ -1344,39 +1344,39 @@ const joinPaths = (paths: string[]): string =>
  * 通过 routes 与 location 得到 matches 数组
  */
 export function matchRoutes(
-  // 用户传入的 routes 对象
-  routes: RouteObject[],
-  // 当前匹配到的 location，注意这在 useRoutes 内部是先有过处理的
-  locationArg: Partial<Location> | string,
-  // 这个参数在 useRoutes 内部是没有用到的，但是该方法是对外暴露的，用户可以使用这个参数来添加统一的路径前缀
-  basename = "/"
+    // 用户传入的 routes 对象
+    routes: RouteObject[],
+    // 当前匹配到的 location，注意这在 useRoutes 内部是先有过处理的
+    locationArg: Partial<Location> | string,
+    // 这个参数在 useRoutes 内部是没有用到的，但是该方法是对外暴露的，用户可以使用这个参数来添加统一的路径前缀
+    basename = "/"
 ): RouteMatch[] | null {
-  // 先格式化为 Path 对象
-  let location =
-    typeof locationArg === "string" ? parsePath(locationArg) : locationArg;
+    // 先格式化为 Path 对象
+    let location =
+        typeof locationArg === "string" ? parsePath(locationArg) : locationArg;
 
-  // 之前提到过，抽离 basename，获取纯粹的 pathname
-  let pathname = stripBasename(location.pathname || "/", basename);
+    // 之前提到过，抽离 basename，获取纯粹的 pathname
+    let pathname = stripBasename(location.pathname || "/", basename);
   
-  // basename 匹配失败，返回 null
-  if (pathname == null) {
-    return null;
-  }
+    // basename 匹配失败，返回 null
+    if (pathname == null) {
+        return null;
+    }
 
-  // 1.扁平化 routes，将树状的 routes 对象根据 path 扁平为一维数组，同时包含当前路由的权重值
-  let branches = flattenRoutes(routes);
-  // 2.传入扁平化后的数组，根据内部匹配到的权重排序
-  rankRouteBranches(branches);
+    // 1.扁平化 routes，将树状的 routes 对象根据 path 扁平为一维数组，同时包含当前路由的权重值
+    let branches = flattenRoutes(routes);
+    // 2.传入扁平化后的数组，根据内部匹配到的权重排序
+    rankRouteBranches(branches);
 
-  let matches = null;
-  // 3.这里就是权重比较完成后的解析顺序，权重高的在前面，先进行匹配，然后是权重低的匹配
-  // branches 中有一个匹配到了就终止循环，或者全都没有匹配到
-  for (let i = 0; matches == null && i < branches.length; ++i)   {
-    // 遍历扁平化的 routes，查看每个 branch 的路径匹配规则是否能匹配到 pathname
-    matches = matchRouteBranch(branches[i], pathname);
-  }
+    let matches = null;
+    // 3.这里就是权重比较完成后的解析顺序，权重高的在前面，先进行匹配，然后是权重低的匹配
+    // branches 中有一个匹配到了就终止循环，或者全都没有匹配到
+    for (let i = 0; matches == null && i < branches.length; ++i)   {
+        // 遍历扁平化的 routes，查看每个 branch 的路径匹配规则是否能匹配到 pathname
+        matches = matchRouteBranch(branches[i], pathname);
+    }
 
-  return matches;
+    return matches;
 }
 
 ```
@@ -1393,33 +1393,70 @@ useRoutes在内部是调用_renderMatches方法来实现的，这里先看源码
  * 其实就是渲染 RouteContext.Provider 组件（包括多个嵌套的 Provider）
  */
 function _renderMatches(
-  matches: RouteMatch[] | null,
-  // 如果在已有 match 的 route 内部调用，会合并父 context 的 match
-  parentMatches: RouteMatch[] = []
+    matches: RouteMatch[] | null,
+    // 如果在已有 match 的 route 内部调用，会合并父 context 的 match
+    parentMatches: RouteMatch[] = []
 ): React.ReactElement | null {
-  if (matches == null) return null;
+    if (matches == null) return null;
 
-  // 生成 outlet 组件，注意这里是从后往前 reduce，所以索引在前的 match 是最外层，也就是父路由对应的 match 是最外层
-  /**
-   *  可以看到 outlet 是通过不断递归生成的组件，最外层的 outlet 递归层数最多，包含有所有的内层组件，
-   *  所以我们在外层使用的 <Outlet /> 是包含有所有子组件的聚合组件
-   * */
-  return matches.reduceRight((outlet, match, index) => {
-    return (
-      <RouteContext.Provider
-        // 如果有 element 就渲染 element，如果没有填写 element，则默认是 <Outlet />，继续渲染内嵌的 <Route />
-        children={
-          match.route.element !== undefined ? match.route.element : <Outlet />
-        }
-        // 代表当前 RouteContext 匹配到的值，matches 并不是全局状态一致的，会根据层级不同展示不同的值，最后一个层级是完全的 matches，这也是之前提到过的不要在外部使用 RouteContext 的原因
-        value={{
-          outlet,
-          matches: parentMatches.concat(matches.slice(0, index + 1))
-        }}
-      />
-    );
-    // 最内层的 outlet 为 null，也就是最后的子路由
-  }, null as React.ReactElement | null);
+    // 生成 outlet 组件，注意这里是从后往前 reduce，所以索引在前的 match 是最外层，也就是父路由对应的 match 是最外层
+    /**
+     *  可以看到 outlet 是通过不断递归生成的组件，最外层的 outlet 递归层数最多，包含有所有的内层组件，
+     *  所以我们在外层使用的 <Outlet /> 是包含有所有子组件的聚合组件
+     * */
+    return matches.reduceRight((outlet, match, index) => {
+        return (
+            <RouteContext.Provider
+                // 如果有 element 就渲染 element，如果没有填写 element，则默认是 <Outlet />，继续渲染内嵌的 <Route />
+                children={
+                match.route.element !== undefined ? match.route.element : <Outlet />
+                }
+                // 代表当前 RouteContext 匹配到的值，matches 并不是全局状态一致的，会根据层级不同展示不同的值，最后一个层级是完全的 matches，这也是之前提到过的不要在外部使用 RouteContext 的原因
+                value={{
+                    outlet,
+                    matches: parentMatches.concat(matches.slice(0, index + 1))
+                }}
+            />
+        );
+        // 最内层的 outlet 为 null，也就是最后的子路由
+    }, null as React.ReactElement | null);
 }
 
 ```
+
+
+
+
+## 问题
+### 1. react-router 里的 <Link> 标签和 <a> 标签有什么区别?
+
+A: 先看Link点击事件handleClick部分源码
+
+```js
+    if (_this.props.onClick) _this.props.onClick(event);
+
+    if (!event.defaultPrevented && // onClick prevented default
+        event.button === 0 && // ignore everything but left clicks
+        !_this.props.target && // let browser handle "target=_blank" etc.
+        !isModifiedEvent(event) // ignore clicks with modifier keys
+    ) {
+        event.preventDefault();
+
+        var history = _this.context.router.history;
+        var _this$props = _this.props,
+            replace = _this$props.replace,
+            to = _this$props.to;
+
+
+        if (replace) {
+            history.replace(to);
+        } else {
+            history.push(to);
+        }
+    }
+```
+Link做了3件事情：
+
+有onclick那就执行onclick
+click的时候阻止a标签默认事件（这样子点击<a href="/abc">123</a>就不会跳转和刷新页面）
+再取得跳转href（即是to），用history（前端路由两种方式之一，history & hash）跳转，此时只是链接变了，并没有刷新页面

@@ -182,6 +182,9 @@ export default function applyMiddleware(...middlewares) {
     }
 }
 ```
+说明 ：middlewareAPI中的dispatch为什么要用匿名函数包裹呢?
+我们用 applyMiddleware 是为了改造 dispatch，所以 applyMiddleware 执行完后，dispatch 是 变化了的，而 middlewareAPI 是 applyMiddleware 执行中分发到各个 middleware 的，所以 必须用匿名函数包裹 dispatch，这样只要 dispatch 更新了，middlewareAPI 中的 dispatch 应 用也会发生变化。
+
 
 1. 函数式编程思想
 利用柯里化，好处：易串联和共享store。
@@ -412,9 +415,9 @@ function dispatch(action) {
 
 
 
-## 5.4 解读react-redux
+### 5.4 解读react-redux
 
-### 5.4.1 Provider
+#### 5.4.1 Provider
 
 简单代码：
 ```js
@@ -435,7 +438,7 @@ export default class Provider extends Component {
 }
 ```
 
-### 5.4.2 connect
+#### 5.4.2 connect
 可接受4个参数，每个参数有若干可选形式
 
 伪代码：
@@ -544,3 +547,44 @@ export default function connect(mapStateToProps, mapDispatchToProps, mergeProps,
     }
 }
 ```
+
+
+
+
+
+## 问题
+### 1. 介绍 Redux 数据流的流程
+### 2. Redux的设计思想
+A: Redux 的设计采用了 Facebook 提出的 Flux 数据处理理念。
+在 Flux 中通过建立一个公共集中数据仓库 Store 进行管理，整体分成四个部分即: View （视图层）、Action （动作）、Dispatcher (派发器)、Store （数据层）。
+修改仓库的数据时，需要从 View 中触发 Action，由 Dispatcher 派发到 Store 修改数据，从而驱动视图更新。
+这种设计的好处在于其数据流向是单一的，数据的修改一定是会经过 Action、Dispatcher 等动作才能实现，方便预测、维护状态的流向。
+
+
+### 3. Redux 中异步的请求怎么处理？
+A: 1、理解middleware机制。
+Redux 提供了 applyMiddleware 方法来加载 middleware。middleware 的设计有点特殊，是一个层层包裹的匿名函数，这其实是函数式编程中的 currying，它是一种使用匿名单参数函数来实现多参数函数的方法。给 middleware 分发 store。而 store 的 getState 方法和 dispatch 方法又分别被直接和间接地赋值给 middlewareAPI 变量 store:
+const middlewareAPI = {
+    getState: store.getState,
+    dispatch: (action) => dispatch(action),
+};
+chain = middlewares.map(middleware => middleware(middlewareAPI));
+然后，让每个 middleware 带着 middlewareAPI 这个参数分别执行一遍。执行完后，获得 chain 数组 [f1, f2, ... , fx, ..., fn]，它保存的对象是第二个箭头函数返回的匿名函数。因为是闭包，每个匿名函数都可以访问相同的 store，即 middlewareAPI。
+
+2。 使用middleware简化异步请求。
+例如：redux-thunk，如果要发异步请求，在 Redux 定义中，最合适的位置是在 action creator 中实现。Thunk 函数实现上就是针对多参数的 currying 以实现对函数的惰性求值。当 action 为函数的时候，我们并没有调用 next 或 dispatch 方法，而是 返回 action 的调用。这里的 action 即为一个 Thunk 函数，以达到将 dispatch 和 getState 参数 传递到函数内的作用。
+
+
+
+### 4. Redux 中间件· 中间件是怎么拿到 store 和 action？然后怎么处理？
+A: 中间件通过柯里化的方式来获取store和action。
+在Redux中，中间件接受三个参数store、next和action。
+```js
+
+const middleware = store => next => action => {
+    // 中间件处理   
+}
+```
+store：通过store，中间件可以获取当前的状态，调用store.getState()。分发新的action，调用store.dispatch(action)。
+next：next是一个函数，用来调用下一个中间件。通过调用next(action)中间件可以将action传递给下一个中间件或reducer使用。
+action：action是一个对象，包含type和payload等属性。中间件可以对action进行各种操作。
