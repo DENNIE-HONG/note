@@ -131,22 +131,7 @@ A: 当最小内容宽度较大时，例如连续英文单词，content内容最�
 因为：可置换行内元素如img和inline-block的元素，在被浏览器解析时，会和“文本”一样，默认在baseline线上显示，而不是在行框的bottom线上。
 
 
-### BFC是什么？
-Block Formatting Context(块级格式化上下文)，是页面上独立的一块渲染区域。
-### BFC特性？
-1. 内部box会在垂直方向，一个接一个的放置；
-2. 每个元素的margin box的左边，与包含块border box的左边相接触；
-3. box垂直方向的距离由margin决定，属于同一个bfc的2个相邻box的margin会重叠；
-4. bfc区域不会与浮动区域的box重叠；
-5. bfc是页面上独立的容器，外面元素不会影响bfc里的元素；
-6. 计算bfc的高度时，浮动元素也参与计算；
 
-### 触发BFC条件有：
-* float值不为none
-* overflow的值不为visible
-* display的值为table-cell、table-caption、inline-block、flex、inline-flex
-* position不为relative、static
-* 根元素
 
 
 
@@ -261,7 +246,7 @@ css3新增层叠上下文：
 
 
 ## 7. css优先级计算规则？
-ID > class > 元素选择器
+ID > class、属性、伪类 > 元素选择器
 选择器的特殊值为0,0,0,0表示。
 * ID选择器的特殊值: 0,1,0,0
 * 类、属性选择器、伪类：0,0,1,0
@@ -455,9 +440,25 @@ a[href$=".pdf"] {
 * break-word: 只有当一个单词整行都显示不下时才拆分换行；
 
 
+### 如何实现一个半圆
 
+#### 上边圆形
 
+```css
+.circle1 {
+    width: 100px;
+    height: 50px;
+    border-radius: 50px 50px 0 0;
+}
 
+```
 
-
+#### 左边圆
+```css
+.circle2 {
+    width: 50px;
+    height: 100px;
+    border-radius: 0 50px 50px 0;
+}
+```
 
