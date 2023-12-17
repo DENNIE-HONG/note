@@ -170,6 +170,9 @@ console.log(Array.prototype.join.call(s, ' ')); // J a v a S c r i p t
 ## 数组小式一笔
 ### 扁平化
 数组展开？
+
+公司：滴滴、快手、携程
+
 ```js
 function flatten(arr) {
   return [].concat(

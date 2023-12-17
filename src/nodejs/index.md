@@ -268,12 +268,14 @@ myEmitter.removeListener('event', callback);
 
 
 
-### 如何实现Event库(发布订阅模式)
+### 如何实现Event库(发布订阅模式)？
+
+公司：滴滴、头条
+
 ```js
 class EventEmeitter {
     constructor() {
         this._events = this._events || new Map();
-        this._maxListeners = this._maxListeners || 10;
     }
 
     emit (type, ...args) {

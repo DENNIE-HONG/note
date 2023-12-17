@@ -1,4 +1,63 @@
 # 面试题锦集
+
+
+
+## 对闭包的看法，为什么要用闭包？说一下闭包原理以及应用场景
+
+公司：滴滴、携程、喜马拉雅、微医、蘑菇街、酷家乐、腾讯应用宝、安居客
+
+### 什么是闭包
+
+有权访问另一个函数作用域中的变量的函数。
+
+
+### 闭包原理
+函数执行分成两个阶段(预编译阶段和执行阶段)。
+
+* 在预编译阶段，如果发现内部函数使用了外部函数的变量，则会在内存中创建一个“闭包”对象并保存对应变量值，如果已存在“闭包”，则只需要增加对应属性值即可。
+* 执行完后，函数执行上下文会被销毁，函数对“闭包”对象的引用也会被销毁，但其内部函数还持有该“闭包”的引用，所以内部函数可以继续使用“外部函数”中的变量
+
+利用了**函数作用域链**的特性，一个函数内部定义的函数会将包含外部函数的**活动对象**添加到它的**作用域链**中，函数执行完毕，其执行作用域链销毁，但因内部函数的作用域链仍然在引用这个活动对象，所以其活动对象不会被销毁，直到内部函数被销毁后才被销毁。
+
+### 优点
+1. 可以从内部函数访问外部函数的作用域中的变量，且访问到的变量长期驻扎在内存中，可供之后使用
+2. 避免变量污染全局
+3. 把变量存到独立的作用域，作为私有成员存在
+
+
+### 缺点
+1. 对内存消耗有负面影响。因内部函数保存了对外部变量的引用，导致无法被垃圾回收，增大内存使用量，所以使用不当会导致内存泄漏
+2. 对处理速度具有负面影响。闭包的层级决定了引用的外部变量在查找时经过的作用域链长度
+3. 可能获取到意外的值(captured value)
+
+### 应用
+应用场景一： 典型应用是模块封装，在各模块规范出现之前，都是用这样的方式防止变量污染全局。
+
+应用场景二： 在循环中创建闭包，防止取到意外的值。
+
+
+
+
+
+
+## 介绍防抖节流原理、区别以及应用，并用JavaScript进行实现
+
+公司：滴滴、虎扑、挖财、58、头条
+
+
+
+
+## 介绍下 promise 的特性、优缺点，内部是如何实现的，动手实现 Promise
+
+公司：滴滴、头条、喜马拉雅、兑吧、寺库、百分点、58、安居客
+
+
+## 实现Promise.all
+
+
+
+
+
 ## 字符串repeact实现?
 1. 'ni'.repeact(3);
 2.
@@ -181,6 +240,11 @@ a3.b.c === a1.b.c; // false
 
 ```
 ### 深拷贝问题
+
+公司：顺丰、新东方、高德、虎扑、微医、百分点、酷狗
+
+在进行深拷贝时，会拷贝所有的属性，并且如果这些属性是对象，也会对这些对象进行深拷贝，直到最底层的基本数据类型为止。这意味着，对于深拷贝后的对象，即使原对象的属性值发生了变化，深拷贝后的对象的属性值也不会受到影响。
+
 * 栈溢出
 * 循环引用
 * clone层级很深，栈溢出，递归方式会有这个问题；
@@ -211,27 +275,23 @@ function cloneLoop(x) {
     while(loopList.length) {
         // 深度优先
         const node = loopList.pop();
-        const parent = node.parent;
-        const key = node.key;
-        const data = node.data;
+        const {parent, key, data} = node;
         let res = parent;
         if (typeof key !== 'undefined') {
             res = parent[key] = {};
         }
-        for (let k in data) {
-            if (data.hasOwnProperty(k)) {
-                if (typeof data[k] === 'object') {
-                    // 下一次循环
-                    loopList.push({
-                        parent: res,
-                        key: k,
-                        data: data[k]
-                    });
-                } else {
-                    res[k] = data[k];
-                }
+        Object.keys(data).forEach((k) => {
+            if (typeof data[k] === 'object') {
+                // 下一次循环
+                loopList.push({
+                    parent: res,
+                    key: k,
+                    data: data[k]
+                });
+            } else {
+                res[k] = data[k];
             }
-        }
+        });
     }
     return root;
 }
@@ -262,6 +322,7 @@ function cloneForce(x) {
         const {parent} = node;
         const {key, data} = node;
         let res = parent;
+        // 非首次
         if (typeof key !== undefined) {
             res = parent[key] = {};
         }
@@ -276,20 +337,19 @@ function cloneForce(x) {
             source: data,
             target: res
         });
-        for (let k in data) {
-            if (data.hasOwnProperty(k)) {
-                if (typeof data[k] === 'object') {
-                    // 下一次循环
-                    loopList.push({
-                        parent: res,
-                        key: k,
-                        data: data[k]
-                    });
-                } else {
-                    res[k] = data[k];
-                }
+        
+        Object.keys(data).forEach((k) => {
+            if (typeof data[k] === 'object') {
+                // 下一次循环
+                loopList.push({
+                    parent: res,
+                    key: k,
+                    data: data[k]
+                });
+            } else {
+                res[k] = data[k];
             }
-        }
+        });
     }
     return root;
 }
@@ -508,6 +568,57 @@ server.on("request", async(req, res) => {
 
 server.listen(3000, ()=> console.log("3000端口"));
 
+
+
+```
+
+
+
+
+
+## 实现add(1)(2)(3)
+
+
+```js
+const add = (a: number, b: number, c: number) => a + b + c;
+
+
+//参数确定
+const curry = (fn: Function) => {
+  let args = [];
+
+  return function temp(...newArgs) {
+    args.push(...newArgs);
+    if (args.length === fn.length) {
+      const val = fn.apply(this, args);
+      args = [];
+      return val;
+    } else {
+      return temp;
+    }
+  };
+};
+
+//参数不确定
+const currying = (fn: Function) => {
+  let args = [];
+
+  return function temp(...newArgs) {
+    if (newArgs.length) {
+      args.push(...newArgs);
+      return temp;
+    } else {
+      const val = fn.apply(this, args);
+      args = [];
+      return val;
+    }
+  };
+};
+
+const curryAdd = curry(add);
+console.log(curryAdd(1)(2)(3)); // 6
+console.log(curryAdd(1, 2)(3)); // 6
+console.log(curryAdd(1)(2, 3)); // 6
 
 
 ```
