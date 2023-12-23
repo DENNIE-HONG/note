@@ -55,6 +55,61 @@
 ## 实现Promise.all
 
 
+## 实现一个多并发请求
+
+```js
+let urls = ['http://dcdapp.com', …];
+/*
+	*实现一个方法，比如每次并发的执行三个请求，如果超时（timeout）就输入null，直到全部请求完
+	*batchGet(urls, batchnum=3, timeout=3000);
+	*urls是一个请求的数组，每一项是一个url
+	*最后按照输入的顺序返回结果数组[]
+*/
+
+function delayPromise(timeout) {
+    return new Promise((resolve, reject) => {
+        setTimeout(resolve, timeout);
+    });
+}
+
+function timeoutPromise(promise, ms) {
+    const timeout = delayPromise(ms).then(() => {
+        return null;
+    });
+    return Promise.race[timeout, promise];
+}
+
+function fetch(url) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const res = await fetch(url);
+            resolve(res);
+        } catch (err) {
+            reject(err);
+        }
+    });
+}
+
+function batchGet(urls,batchnum=3, timeout=3000 ) {
+    const result = [];
+    const chunkLen = Math.ceil(urls.length / batchnum);
+    for (let i = 0; i < chunkLen; i++) {
+        const curUrls = urls.slice(batchnum * i, batchnum * (i + 1));
+        const fetchs = curUrls.map((url) => fetch(url));
+        const pAll = Promise.all(fetchs);
+        const curRes = timeoutPromise(pAll, timeout);
+        if (!curRes) {
+            return null;
+        }
+        result.push(...curRes);
+    }
+    return result;
+}
+
+```
+
+
+
 
 
 

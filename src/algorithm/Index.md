@@ -331,7 +331,7 @@ function Node(data, left, right) {
 
 
 ```js
-// 中序遍历
+// 中序遍历 easy
 function inOrder(node) {
   if (node !== null) {
     inOrder(node.left);
