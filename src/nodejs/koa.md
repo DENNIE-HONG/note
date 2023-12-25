@@ -115,20 +115,20 @@ function compose (middleware) {
 
   return function (context, next) {
     // last called middleware #
-    let index = -1
-    return dispatch(0)
+    let index = -1;
     function dispatch (i) {
-      if (i <= index) return Promise.reject(new Error('next() called multiple times'))
-      index = i
-      let fn = middleware[i]
-      if (i === middleware.length) fn = next
-      if (!fn) return Promise.resolve()
-      try {
-        return Promise.resolve(fn(context, dispatch.bind(null, i + 1)));
-      } catch (err) {
-        return Promise.reject(err)
-      }
+        if (i <= index) return Promise.reject(new Error('next() called multiple times'))
+        index = i;
+        let fn = middleware[i];
+        if (i === middleware.length) fn = next
+        if (!fn) return Promise.resolve();
+        try {
+            return Promise.resolve(fn(context, dispatch.bind(null, i + 1)));
+        } catch (err) {
+            return Promise.reject(err);
+        }
     }
+    return dispatch(0)
   }
 }
 ```
@@ -211,6 +211,8 @@ co.wrap = function (fn) {
 
 
 ## co
+
+> https://github.com/berwin/Blog/issues/8
 简单来说co，就是把generator自动执行，再返回一个promise。 generator函数这玩意它不自动执行呀，还要一步步调用next()，也就是叫它走一步才走一步。
 ```js
 // 多个yeild，传参情况
@@ -259,41 +261,57 @@ function co(gen) {
     onFulfilled();
 
     function next(ret) {
-      // 中间件结束
-      if (ret.done) {
-        return resolve(ret.value);
-      }
-      // 确保返回值是promise对象。
-      var value = toPromise.call(ctx, ret.value);
-      if (value && isPromise(value)) {
-        return value.then(onFulfilled, onReject);
-      }
-      return onReject(new TypeError('You may only yield a function, promise, generator, array, or object, '
-        + 'but the following object was passed: "' + String(ret.value) + '"')));
+        // 中间件结束
+        if (ret.done) {
+            return resolve(ret.value);
+        }
+        // 确保返回值是promise对象。 用co在包一层toPromise.call(ctx, ret.value);
+        var value = toPromise.call(ctx, ret.value);
+        if (value && isPromise(value)) {
+            return value.then(onFulfilled, onReject);
+        }
+        return onReject(new TypeError('You may only yield a function, promise, generator, array, or object, '
+            + 'but the following object was passed: "' + String(ret.value) + '"')));
     }
     function onFulfilled(res) {
-      var ret;
-      try {
-        // 包含下一个中间件generator对象
-        ret = gen.next(res);
-      } catch (e) {
-        return reject(e);
-      }
-      next(ret);
+        var ret;
+        try {
+            // 包含下一个中间件generator对象
+            ret = gen.next(res);
+        } catch (e) {
+            return reject(e);
+        }
+        next(ret);
     }
 
     function onReject(err) {
-      var ret;
-      try {
-        ret = gen.throw(err);
-      } catch (e) {
-        return reject(e);
-      }
-      next(ret);
+        var ret;
+        try {
+            ret = gen.throw(err);
+        } catch (e) {
+            return reject(e);
+        }
+        next(ret);
     }
   });
 }
 ```
+
+所以我们可以看到，如果第二个中间件里依然有yield next这样的语句，那么第三个中间件依然会被co包裹一层并运行.next方法，依次列推，这是一个递归的操作
+
+所以我们可以肯定的是，每一个中间件都被promise包裹着，直到有一天中间件中的逻辑运行完成了，那么会调用promise的resolve来告诉程序这个中间件执行完了。
+
+那么中间件执行完了之后，会触发onFulfilled，这个函数会执行.next方法。
+
+所以有一个非常重要的一点需要注意，onFulfilled这个函数非常重要，重要在哪里？？？重要在它执行的时间上。
+
+**onFulfilled这个函数只在两种情况下被调用，一种是调用co的时候执行，还有一种是当前promise中的所有逻辑都执行完毕后执行**
+
+其实就这一句话就能说明koa的中间件为什么会回逆。
+
+回逆其实是有一个去和一个回的操作
+
+
 
 ```js
  请求

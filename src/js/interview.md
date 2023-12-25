@@ -113,6 +113,12 @@ function batchGet(urls,batchnum=3, timeout=3000 ) {
 
 
 
+
+
+
+
+
+
 ## 字符串repeact实现?
 1. 'ni'.repeact(3);
 2.
@@ -176,7 +182,7 @@ require时才去加载模块，加载完再接着执行。
 输出“ccc”
 ```
 ### 4. es6 Module：export和import
-import编译时就引入模块代码，而不是运行时加载，无法实现条件加载。
+**import编译时就引入模块代码**，而不是运行时加载，无法实现条件加载。
 执行：和AMD一样
 ```js
 加载了a模块；
@@ -185,6 +191,13 @@ import编译时就引入模块代码，而不是运行时加载，无法实现�
 输出“aaa”
 输出“ccc”
 ```
+
+
+
+
+
+
+
 ### 差异
 1. commonjs输出是拷贝，es6输出的是绑定
 2. commonjs模块是运行时加载，es6是编译时输出接口；

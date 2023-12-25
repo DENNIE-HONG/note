@@ -11,6 +11,7 @@ const array = Array(3); //并没有元素
 返回新数组
 ### slice
 返回新数组
+提取原数组中索引start到end的元素。包括start，不包括end。end被省略，slicet默认到数组末尾
 ### splice
 修改原数组，返回删除元素组成的数组。
 ```js
@@ -18,6 +19,41 @@ const a = [1, 2, 3, 4, 5, 6, 7, 8];
 a.splice(4); // 返回[5, 6, 7, 8]
 console.log(a); // [1, 2, 3, 4]
 ```
+
+模拟实现：
+```js
+Array.prototype._splice = function (start, deleteCount, ...addList) {
+    if (start < 0) {
+        if (Math.abs(start) > this.length) {
+            start = 0;
+        } else {
+            start += this.length;
+        }
+    }
+
+    if (typeof deleteCount === 'undefined') {
+        deleteCount = this.length - start;
+    }
+
+    const removeList = this.slice(start, start + deleteCount);
+
+    const right = this.slice(start + deleteCount);
+
+    let addIndex = start;
+    addList.concat(right).forEach(item => {
+        this[addIndex] = item
+        addIndex++;
+    })
+    this.length = addIndex;
+
+    return removeList
+}
+```
+
+
+
+
+
 
 ### shift
 用于把数组的第一个元素从其中删除，并返回第一个元素的值;
@@ -222,3 +258,4 @@ Array.prototype.unique = function() {
     });
 }
 ```
+
