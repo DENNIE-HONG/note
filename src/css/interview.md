@@ -418,3 +418,6 @@ Less 最令人兴奋的特征是接受多个值，如 transform，transition和 
 
 ## 参考
 >https://zhuanlan.zhihu.com/p/366941015
+
+
+## css怎么做到避免污染全局s

@@ -43,7 +43,7 @@ function Counter() {
 
 
 解决方法：
-
+1. 直接使用 useState 的第二个参数，即 setCount 的回调函数：
 ```js
 const handleClick = () => {
   setTimeout(() => {
@@ -53,6 +53,29 @@ const handleClick = () => {
 
 ```
 即setCount函数，可以接受一个回调函数作为参数。这个回调函数会接受当前state的值作为参数，然后返回一个新的state值。React会使用这个新的state值来更新组件的状态。
+
+
+2. 使用useRef
+
+```jsx
+const Test = () => {
+    const countRef = useRef(0);
+    const [count, setCount] = useState(0);
+
+    const handleClick = () => {
+        setTimeout(() => {
+            setCount(countRef.current++);
+        }, 1000);
+    };
+
+    return (
+        <div onClick={handleClick}>{count}</div>
+    );
+}
+```
+
+
+
 
 ### useEffect闭包陷阱
 
@@ -99,3 +122,7 @@ useEffect(() => {
 
 
 ```
+
+
+## 父组件更新，子组件也更新？
+利用memo

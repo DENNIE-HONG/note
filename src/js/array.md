@@ -23,6 +23,7 @@ console.log(a); // [1, 2, 3, 4]
 模拟实现：
 ```js
 Array.prototype._splice = function (start, deleteCount, ...addList) {
+    // 处理下start 是负数情况  
     if (start < 0) {
         if (Math.abs(start) > this.length) {
             start = 0;
@@ -30,7 +31,7 @@ Array.prototype._splice = function (start, deleteCount, ...addList) {
             start += this.length;
         }
     }
-
+    // 第二个参数不传，默认删除到数组末尾
     if (typeof deleteCount === 'undefined') {
         deleteCount = this.length - start;
     }
@@ -146,6 +147,39 @@ Array.prototype.selfReduce = function(fn, initialValue) {
   return res;
 }
 ```
+
+
+
+### findIndex
+实现一个findIndex的函数， 利用二分查找
+例如：
+找到有序数组 [1, 2, 3, 4, 7, 7, 7, 9, 12, 23, 34, 45, 55, 67]中第一次出现的位置，比如7第一次出现的位置是4
+```js
+function findIndex(arr, target) {
+    const len = arr.length;
+    let left = 0;
+    let right = len - 1;
+
+    let ret = -1;
+    while (left <= right) {
+        const middle = Math.floor((right - left) /2) + left;
+        const val = arr[middle];
+        if (val === target) {
+            ret = middle;
+            break;
+        }  else if (val > target) {
+            right = middle - 1;
+        } else {
+            left = middle + 1;
+        }
+    }
+
+    return ret;
+}
+
+```
+
+
 
 
 ### for of

@@ -52,7 +52,10 @@
 公司：滴滴、头条、喜马拉雅、兑吧、寺库、百分点、58、安居客
 
 
-## 实现Promise.all
+### 实现Promise.all
+
+
+### promise 跟 async await 的区别，使用场景
 
 
 ## 实现一个多并发请求
@@ -690,3 +693,4 @@ console.log(curryAdd(1)(2, 3)); // 6
 
 
 ```
+
