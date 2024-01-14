@@ -124,6 +124,8 @@ Array.prototype.push = function(target) {
 
 <font color="red">循环实现数组的reduce方法：</font>
 
+主要是处理第二个初始参数不传
+
 ```js
 Array.prototype.selfReduce = function(fn, initialValue) {
   let arr = Array.prototype.slice.call(this);

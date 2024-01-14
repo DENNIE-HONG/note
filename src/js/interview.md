@@ -58,6 +58,88 @@
 ### promise 跟 async await 的区别，使用场景
 
 
+
+### 考异步循环
+
+```js
+const timeout = (ms) =>
+  new Promise((resolve, reject) => {
+    setTimeout(() => {
+      resolve();
+    }, ms);
+  });
+const ajax1 = () =>
+  timeout(2000).then(() => {
+    console.log("1");
+    return 1;
+  });
+const ajax2 = () =>
+  timeout(1000).then(() => {
+    console.log("2");
+    return 2;
+  });
+const ajax3 = () =>
+  timeout(2000).then(() => {
+    console.log("3");
+    return 3;
+  });
+const mergePromise = (ajaxArray) => {
+  // 1,2,3 done [1,2,3] 此处写代码 请写出ES6、ES3 2中解法
+};
+mergePromise([ajax1, ajax2, ajax3]).then((data) => {
+  console.log("done");
+  console.log(data); // data 为[1,2,3]
+});
+// 执行结果为：1 2 3 done [1,2,3]
+```
+
+#### es6
+```js
+const mergePromise = (ajaxArray) => {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const arr = [];
+            for (const ajaxfn of ajaxArray) {
+                const res = await ajaxfn(); 
+                arr.push(res);
+            }
+            return resolve(arr);
+        } catch(err) {
+            reject(err);
+        }
+    });
+};
+
+```
+#### es3解法
+```js
+const mergePromise = (ajaxArray) => {
+    return new Promise((resolve, reject) => {
+        const result = [];
+        function next(){
+            if(ajaxArray.length === 0) return resolve(result);
+            const fn = ajaxArray.shift();
+            if(typeof fn === 'function') {
+                fn().then(res => {
+                    result.push(res);
+                    next();
+                }).catch(reject);
+            }
+        }
+        next();
+  });
+}
+
+```
+
+
+
+
+
+
+
+
+
 ## 实现一个多并发请求
 
 ```js
@@ -694,3 +776,32 @@ console.log(curryAdd(1)(2, 3)); // 6
 
 ```
 
+
+
+## instanceof的原理：
+
+```js
+function new_instanceof (leftValue, rightValue) {
+    // 获取构造函数的显式原型
+    let rightProps = rightValue.prototype;
+    // 获取实例对象的隐式原型
+    leftValue = leftValue.__proto__;
+    while(true) {
+        // 说明到原型链顶端，还未找到，返回 false
+        if (leftValue === null) {
+            return false;
+        }
+        // 隐式原型与显式原型相等
+        if (leftValue === rightProps) {
+            return true;
+        }
+        // 获取隐式原型的隐式原型，重新赋值给 leftValue
+        leftValue = leftValue.__proto__;
+    }
+}
+// 右边变量的prototype在左边变量的原型链上
+```
+例如：Object instanceof object;  
+右边的原型： Object.prototype;  
+左边的Object.__proto__ = Function.prototype;  
+Function.prototype.__proto__ = Object.prototype;
